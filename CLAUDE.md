@@ -48,8 +48,17 @@ Indicatief — valideren vóór formeel gebruik. Idempotent; `CRM_SEED=0` slaat 
 - Vóór pushen frontend-wijzigingen: altijd `npm run build` lokaal draaien.
 - Nooit secrets/sleutels committen; centrale RS256-sleutel via GitHub Secret / .env.
 - Productie ongemoeid tijdens bouw — alles eerst op staging.
+- **nginx op de server**: alle vhosts staan in ÉÉN bestand `/etc/nginx/sites-enabled/rhadix` (een aparte kopie, GEEN symlink naar sites-available). Wijzig altijd de **enabled**-versie; `sites-available/rhadix` is verouderd/divergerend. Cert: `/etc/ssl/rhadix/rhadix.pem` + `.key`. Per app twee server-blokken (80→301 https, 443 met `location /api/`→backend en `location /`→frontend).
+
+## Activatie & toegang
+- **Staging:** https://crm-staging.rhadix.nl — nginx-blok in `sites-enabled/rhadix` (fe:5183 be:8019).
+- **Productie:** https://crm.rhadix.nl (fe:5182 be:8018) — vhost + DNS + PROD-secrets vereist.
+- **Login (alle apps gelijk):** `admin@rhadix.nl` / `Rhadixvalidatie26!` (gelekt — bij gelegenheid platformbreed roteren).
+- **GitHub-secrets** per omgeving: `*_DB_PASSWORD`, `*_JWT_SECRET_KEY`, `*_ADMIN_PASSWORD`, `*_SSH_KEY/HOST/USER`. Centrale publieke SSO-sleutel zit als default in de compose-bestanden (geen secret nodig).
+- **Server-map:** `/opt/crm-app` (compose + .env per omgeving).
 
 ## Sessie-log
 | Datum | Wijziging |
 |---|---|
+| 2026-06-23 | LIVE op staging: `crm-staging.rhadix.nl` geactiveerd (GitHub-secrets, nginx-blok in `sites-enabled/rhadix`, Cloudflare DNS). Deploy groen (test+build+deploy+health). Seed bevestigd op staging-DB (17/152/68 + 1 krachtenveld/8 stakeholders). Admin-wachtwoord gelijkgetrokken met platform (`Rhadixvalidatie26!`). Centrale SSO-publieke sleutel als default in beide compose-bestanden. Release v0.1.0 → productie. |
 | 2026-06-23 | Repo opgezet: volledige Rhadix-conforme CRM (FastAPI+Vite+Postgres+Docker), unified identity (centraal RS256-token + JIT), merk-laag rhadix/suresync. Datamodel + CRUD voor relaties/contacten/krachtenveld/stakeholders/opvolging + dashboard. Seed uit Excel (17 RSO's, 152 aanbieders, 68 contacten) + voorbeeld-krachtenveld GERRIT (8 stakeholders). 13 backend-tests groen, frontend build groen. CI + staging/prod-deploy workflows (poorten 5182/8018 · 5183/8019). Vierde tegel toegevoegd aan platform-portal (datavalidatie staging). |
