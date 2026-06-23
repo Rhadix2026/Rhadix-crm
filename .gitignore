@@ -1,0 +1,13 @@
+node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.venv/
+*.db
+.env
+.env.staging
+.env.production
+!.env.*.example
+.DS_Store
+
+.pytest_cache/

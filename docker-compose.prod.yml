@@ -1,0 +1,49 @@
+# Rhadix CRM — Productie (poorten 5182 / 8018). Deploy via GitHub Actions + goedkeuring.
+#   docker compose -p crm-prod -f docker-compose.prod.yml --env-file .env.production up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: crm-db
+    restart: always
+    environment:
+      POSTGRES_USER:     ${DB_USER:-crm}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Stel DB_PASSWORD in in .env.production}
+      POSTGRES_DB:       ${DB_NAME:-rhadix_crm}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-crm} -d ${DB_NAME:-rhadix_crm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/${GHCR_ORG:-rhadix2026}/crm-backend:${CRM_VERSION:-latest}
+    container_name: crm-backend
+    restart: always
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL:          postgresql://${DB_USER:-crm}:${DB_PASSWORD}@crm-db:5432/${DB_NAME:-rhadix_crm}
+      JWT_SECRET_KEY:        ${JWT_SECRET_KEY:?Stel JWT_SECRET_KEY in}
+      RHADIX_ENV:            production
+      RHADIX_ADMIN_EMAIL:    ${RHADIX_ADMIN_EMAIL:-admin@rhadix.nl}
+      RHADIX_ADMIN_PASSWORD: ${RHADIX_ADMIN_PASSWORD:?Stel RHADIX_ADMIN_PASSWORD in}
+      CENTRAL_JWT_PUBLIC_KEY: ${CENTRAL_JWT_PUBLIC_KEY:-}
+      CENTRAL_JWT_ISSUER:     ${CENTRAL_JWT_ISSUER:-suresync-id}
+    ports: ["${BACKEND_PORT:-8018}:8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    image: ghcr.io/${GHCR_ORG:-rhadix2026}/crm-frontend:${CRM_VERSION:-latest}
+    container_name: crm-frontend
+    restart: always
+    depends_on: [backend]
+    ports: ["${FRONTEND_PORT:-5182}:80"]
+
+volumes:
+  pgdata: { name: crm_pgdata_prod }

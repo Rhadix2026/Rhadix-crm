@@ -1,0 +1,113 @@
+name: Deploy — Production
+on:
+  push: { tags: ['v*.*.*'] }
+  workflow_dispatch:
+    inputs:
+      version_tag: { description: "Versie om te deployen (bv. v0.1.0)", required: true, type: string }
+env:
+  BACKEND_IMAGE:  ghcr.io/rhadix2026/crm-backend
+  FRONTEND_IMAGE: ghcr.io/rhadix2026/crm-frontend
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env: { RHADIX_ENV: test }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements-dev.txt }
+      - run: pip install -r requirements-dev.txt
+        working-directory: backend
+      - run: pytest tests/ --tb=short -v
+        working-directory: backend
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions: { contents: read, packages: write }
+    outputs: { version: "${{ steps.version.outputs.tag }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.version_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          fi
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          no-cache: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:latest
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          no-cache: true
+          build-args: |
+            VITE_RHADIX_ENV=production
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: docker-compose.prod.yml
+          target: /opt/crm-app/
+      - name: Deploy met automatische rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            VERSION="${{ needs.build.outputs.version }}"
+            COMPOSE="docker compose -p crm-prod -f /opt/crm-app/docker-compose.prod.yml --env-file /opt/crm-app/.env.production"
+            PREV=$(docker inspect crm-backend --format '{{.Config.Image}}' 2>/dev/null | awk -F: '{print $NF}' || echo "")
+            cat > /opt/crm-app/.env.production << 'ENVEOF'
+            GHCR_ORG=rhadix2026
+            DB_USER=crm
+            DB_NAME=rhadix_crm
+            FRONTEND_PORT=5182
+            BACKEND_PORT=8018
+            RHADIX_ADMIN_EMAIL=admin@rhadix.nl
+            CENTRAL_JWT_ISSUER=suresync-id
+            ENVEOF
+            echo "CRM_VERSION=$VERSION"                                       >> /opt/crm-app/.env.production
+            echo "DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}"                >> /opt/crm-app/.env.production
+            echo "JWT_SECRET_KEY=${{ secrets.PROD_JWT_SECRET_KEY }}"          >> /opt/crm-app/.env.production
+            echo "RHADIX_ADMIN_PASSWORD=${{ secrets.PROD_ADMIN_PASSWORD }}"   >> /opt/crm-app/.env.production
+            echo "CENTRAL_JWT_PUBLIC_KEY=${{ secrets.PROD_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.production
+            chmod 600 /opt/crm-app/.env.production
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            $COMPOSE pull || { echo "pull mislukt"; exit 1; }
+            $COMPOSE up -d --remove-orphans
+            OK=false
+            for i in $(seq 1 18); do
+              S=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8018/api/health 2>/dev/null || echo 000)
+              [ "$S" = "200" ] && { OK=true; echo "✓ prod ok ($i)"; break; }
+              echo "poging $i/18 — HTTP $S"; sleep 5
+            done
+            [ "$OK" = "true" ] && { $COMPOSE ps; exit 0; }
+            echo "✗ HEALTH MISLUKT — ROLLBACK"
+            docker logs crm-backend --tail 50 || true
+            if [ -n "$PREV" ] && [ "$PREV" != "$VERSION" ] && [ "$PREV" != "latest" ]; then
+              sed -i "s/CRM_VERSION=.*/CRM_VERSION=$PREV/" /opt/crm-app/.env.production
+              $COMPOSE up -d --remove-orphans; sleep 15
+              RB=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8018/api/health 2>/dev/null || echo 000)
+              [ "$RB" = "200" ] && echo "✓ rollback naar $PREV" || echo "✗ rollback mislukt"
+            fi
+            exit 1

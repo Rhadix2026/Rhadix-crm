@@ -1,0 +1,32 @@
+# Rhadix CRM — lokale ontwikkeling
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: crm-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm
+      POSTGRES_DB: rhadix_crm
+    ports: ["5442:5432"]
+    volumes: ["pgdata_dev:/var/lib/postgresql/data"]
+
+  backend:
+    build: ./backend
+    container_name: crm-dev-backend
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://crm:crm@crm-dev-db:5432/rhadix_crm
+      JWT_SECRET_KEY: dev-insecure-change-me
+      RHADIX_ENV: development
+    ports: ["8000:8000"]
+
+  frontend:
+    build: { context: ./frontend, args: { VITE_RHADIX_ENV: development } }
+    container_name: crm-dev-frontend
+    depends_on: [backend]
+    ports: ["5173:80"]
+
+volumes:
+  pgdata_dev: { name: crm_pgdata_dev }

@@ -1,0 +1,119 @@
+import React from 'react'
+import { brandInfo, currentBrand } from '../brand'
+
+// ── Merk-logo (knoop-netwerk in de huisstijl) ───────────────────────────────
+export function BrandMark({ size = 32 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <circle cx="20" cy="20" r="19" fill="var(--accent)" opacity="0.18" />
+      <line x1="20" y1="20" x2="11" y2="12" stroke="var(--accent)" strokeWidth="1.6" />
+      <line x1="20" y1="20" x2="30" y2="13" stroke="var(--accent)" strokeWidth="1.6" />
+      <line x1="20" y1="20" x2="13" y2="29" stroke="var(--accent)" strokeWidth="1.6" />
+      <line x1="20" y1="20" x2="29" y2="28" stroke="var(--accent)" strokeWidth="1.6" />
+      <circle cx="20" cy="20" r="4.4" fill="#fff" />
+      <circle cx="11" cy="12" r="2.6" fill="var(--accent)" />
+      <circle cx="30" cy="13" r="2.6" fill="var(--accent)" />
+      <circle cx="13" cy="29" r="2.6" fill="var(--accent-soft)" />
+      <circle cx="29" cy="28" r="2.6" fill="var(--accent-soft)" />
+    </svg>
+  )
+}
+
+export function BrandLogo({ onClick }) {
+  const b = brandInfo()
+  return (
+    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, background:'none',
+      border:'none', cursor:onClick?'pointer':'default', padding:0 }}>
+      <BrandMark size={32} />
+      <span style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', lineHeight:1 }}>
+        <span style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-.01em' }}>
+          {b.naam} <span style={{ color:'var(--accent)', fontWeight:600 }}>CRM</span>
+        </span>
+        <span style={{ fontSize:9, fontWeight:600, color:'var(--accent-soft)', letterSpacing:'2px',
+          textTransform:'uppercase', marginTop:2 }}>{b.tagline}</span>
+      </span>
+    </button>
+  )
+}
+
+// ── Navigatie ───────────────────────────────────────────────────────────────
+export function Nav({ tabs, active, onTab, onBrandToggle, authUser, onLogout }) {
+  const brand = currentBrand()
+  return (
+    <div className="nav">
+      <div className="row" style={{ gap:24 }}>
+        <BrandLogo onClick={() => onTab(tabs[0].key)} />
+        <div className="nav-tabs">
+          {tabs.map(t => (
+            <button key={t.key} className={`nav-tab ${active === t.key ? 'active' : ''}`}
+              onClick={() => onTab(t.key)}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="nav-right">
+        {onBrandToggle && (
+          <button className="nav-tab" onClick={onBrandToggle} title="Wissel huisstijl (alleen staging)">
+            {brand === 'suresync' ? '← Rhadix' : 'SureSync ↗'}
+          </button>
+        )}
+        {authUser && <span className="small" style={{ color:'#cdd7e8' }}>{authUser.email}</span>}
+        {onLogout && <button className="nav-tab" onClick={onLogout}>Uitloggen</button>}
+      </div>
+    </div>
+  )
+}
+
+export function PageHead({ title, sub, actions }) {
+  return (
+    <div className="page-head spread">
+      <div><h1>{title}</h1>{sub && <p>{sub}</p>}</div>
+      {actions && <div className="row">{actions}</div>}
+    </div>
+  )
+}
+
+// ── Badges ────────────────────────────────────────────────────────────────
+const NIVEAU_CLS = { hoog:'b-red', middel:'b-amber', laag:'b-green' }
+export function NiveauBadge({ value, label }) {
+  const cls = NIVEAU_CLS[(value || '').toLowerCase()] || 'b-grey'
+  return <span className={`badge ${cls}`}>{label ? `${label}: ` : ''}{value || '—'}</span>
+}
+const BETROUW_CLS = { hoog:'b-green', midden:'b-amber', middel:'b-amber', laag:'b-red' }
+export function BetrouwBadge({ value }) {
+  const cls = BETROUW_CLS[(value || '').toLowerCase()] || 'b-grey'
+  return <span className={`badge ${cls}`}>{value || 'Onbekend'}</span>
+}
+const HOUDING = {
+  positief:{ c:'b-green', e:'☺' }, neutraal:{ c:'b-grey', e:'•' },
+  onbekend:{ c:'b-grey', e:'?' }, negatief:{ c:'b-red', e:'☹' },
+}
+export function HoudingBadge({ value }) {
+  const h = HOUDING[(value || '').toLowerCase()] || HOUDING.onbekend
+  return <span className={`badge ${h.c}`}>{h.e} {value || 'Onbekend'}</span>
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────
+export function Modal({ title, onClose, children, footer, wide }) {
+  return (
+    <div className="modal-bg" onMouseDown={onClose}>
+      <div className="modal" style={wide ? { maxWidth:760 } : undefined} onMouseDown={e => e.stopPropagation()}>
+        <div className="modal-head">{title}<button className="btn-ghost" onClick={onClose} style={{ fontSize:20 }}>×</button></div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    </div>
+  )
+}
+
+export function Field({ label, children }) {
+  return <div className="field"><label>{label}</label>{children}</div>
+}
+
+export function Toast({ msg }) { return msg ? <div className="toast">{msg}</div> : null }
+
+// regels (newline-gescheiden tekst) → lijst
+export function Bullets({ text }) {
+  const lines = (text || '').split('\n').map(s => s.trim()).filter(Boolean)
+  if (!lines.length) return <span className="muted small">—</span>
+  return <ul className="list-clean">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+}

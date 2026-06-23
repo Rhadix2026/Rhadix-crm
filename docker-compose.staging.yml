@@ -1,0 +1,44 @@
+# Rhadix CRM — Staging (poorten 5183 / 8019), strikt gescheiden van productie.
+#   docker compose -p crm-staging -f docker-compose.staging.yml --env-file .env.staging up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: crm-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${STAGING_DB_USER:-crm_staging}
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?Stel STAGING_DB_PASSWORD in in .env.staging}
+      POSTGRES_DB:       ${STAGING_DB_NAME:-crm_staging}
+    volumes: ["pgdata_staging:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STAGING_DB_USER:-crm_staging} -d ${STAGING_DB_NAME:-crm_staging}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/${GHCR_ORG:-rhadix2026}/crm-backend:${STAGING_IMAGE_TAG:-staging}
+    container_name: crm-staging-backend
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL:          postgresql://${STAGING_DB_USER:-crm_staging}:${STAGING_DB_PASSWORD}@crm-staging-db:5432/${STAGING_DB_NAME:-crm_staging}
+      JWT_SECRET_KEY:        ${STAGING_JWT_SECRET_KEY:?Stel STAGING_JWT_SECRET_KEY in als GitHub Secret}
+      RHADIX_ENV:            staging
+      RHADIX_ADMIN_EMAIL:    ${STAGING_ADMIN_EMAIL:-admin@rhadix.nl}
+      RHADIX_ADMIN_PASSWORD: ${STAGING_ADMIN_PASSWORD:?Stel STAGING_ADMIN_PASSWORD in}
+      # Centrale identiteit (SureSync ID) — accepteer RS256-token van het platform
+      CENTRAL_JWT_PUBLIC_KEY: ${STAGING_CENTRAL_JWT_PUBLIC_KEY:-}
+      CENTRAL_JWT_ISSUER:     ${CENTRAL_JWT_ISSUER:-suresync-id}
+    ports: ["${STAGING_BACKEND_PORT:-8019}:8000"]
+
+  frontend:
+    image: ghcr.io/${GHCR_ORG:-rhadix2026}/crm-frontend:${STAGING_IMAGE_TAG:-staging}
+    container_name: crm-staging-frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports: ["${STAGING_FRONTEND_PORT:-5183}:80"]
+
+volumes:
+  pgdata_staging: { name: crm_pgdata_staging }
