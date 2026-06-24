@@ -78,3 +78,30 @@ def test_genereer_krachtenveld(client, auth):
     # kwadrant-afleiding werkt op gegenereerde stakeholders
     cio = next(s for s in kv["stakeholders"] if s["naam"] == "Informatiemanager / CIO")
     assert cio["kwadrant"] == "Actief betrekken"
+
+
+def test_teamleden_en_accounthouder(client, auth):
+    team = client.get("/api/crm/teamleden", headers=auth).json()
+    assert team and team[0]["email"] == "admin@rhadix.nl"
+    me_id = team[0]["id"]
+    # organisatie met e-mail, linkedin én accounthouder
+    org = client.post("/api/crm/organisaties", headers=auth, json={
+        "soort": "RSO", "naam": "RSO Test", "email": "info@rsotest.nl",
+        "linkedin": "https://linkedin.com/company/rsotest", "accounthouder_id": me_id,
+    }).json()
+    assert org["email"] == "info@rsotest.nl"
+    assert org["linkedin"].endswith("rsotest")
+    assert org["accounthouder"] and org["accounthouder"]["email"] == "admin@rhadix.nl"
+    # accounthouder leeghalen mag ook
+    upd = client.patch(f"/api/crm/organisaties/{org['id']}", headers=auth, json={
+        "soort": "RSO", "naam": "RSO Test", "accounthouder_id": None,
+    }).json()
+    assert upd["accounthouder"] is None
+
+
+def test_stakeholder_email_linkedin(client, auth):
+    kv = client.post("/api/crm/krachtenvelden", headers=auth, json={"titel": "KV velden"}).json()
+    sh = client.post(f"/api/crm/krachtenvelden/{kv['id']}/stakeholders", headers=auth, json={
+        "naam": "Jan", "email": "jan@rso.nl", "linkedin": "https://linkedin.com/in/jan",
+    }).json()
+    assert sh["email"] == "jan@rso.nl" and sh["linkedin"].endswith("/jan")

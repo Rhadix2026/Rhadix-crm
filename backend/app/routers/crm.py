@@ -47,6 +47,10 @@ def _org(o: Organisatie) -> dict:
         "aantal_aangesloten": o.aantal_aangesloten, "focus_themas": o.focus_themas,
         "rso_naam": o.rso_naam, "betrouwbaarheid": o.betrouwbaarheid,
         "onderbouwing": o.onderbouwing, "actie_validatie": o.actie_validatie,
+        "email": o.email, "linkedin": o.linkedin,
+        "accounthouder_id": str(o.accounthouder_id) if o.accounthouder_id else None,
+        "accounthouder": ({"id": str(o.accounthouder.id), "naam": o.accounthouder.full_name,
+                           "email": o.accounthouder.email} if o.accounthouder else None),
         "aantal_contacten": len(o.contactpersonen), "aantal_krachtenvelden": len(o.krachtenvelden),
     }
 
@@ -56,6 +60,7 @@ def _cp(c: Contactpersoon) -> dict:
         "id": str(c.id), "organisatie_id": str(c.organisatie_id) if c.organisatie_id else None,
         "categorie": c.categorie, "organisatie_naam": c.organisatie_naam, "rso_regio": c.rso_regio,
         "rolniveau": c.rolniveau, "naam": c.naam, "functie": c.functie, "email": c.email,
+        "linkedin": c.linkedin,
         "telefoon": c.telefoon, "bron_url": c.bron_url, "bron_type": c.bron_type,
         "zekerheid": c.zekerheid, "opmerking": c.opmerking,
     }
@@ -68,6 +73,7 @@ def _sh(s: Stakeholder) -> dict:
         "invloed": s.invloed, "betrokkenheid": s.betrokkenheid, "houding": s.houding,
         "argumenten": s.argumenten, "belemmeringen": s.belemmeringen, "aanpak": s.aanpak,
         "laatste_contact": s.laatste_contact, "volgende_stap": s.volgende_stap,
+        "email": s.email, "linkedin": s.linkedin,
         "kwadrant": _quadrant(s.invloed, s.betrokkenheid),
     }
 
@@ -99,6 +105,15 @@ def _act(a: Activiteit) -> dict:
 
 
 # ── ORGANISATIES ───────────────────────────────────────────────────────────────
+@router.get("/teamleden")
+def list_teamleden(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Rhadix-teamleden (gebruikers binnen deze tenant) — voor de accounthouder-keuze."""
+    users = (db.query(User)
+             .filter(User.tenant_id == user.tenant_id, User.is_active == True)
+             .order_by(User.full_name).all())
+    return [{"id": str(u.id), "naam": u.full_name or u.email, "email": u.email} for u in users]
+
+
 class OrgBody(BaseModel):
     soort: str = "VVT"
     naam: str
@@ -115,6 +130,9 @@ class OrgBody(BaseModel):
     betrouwbaarheid: Optional[str] = None
     onderbouwing: Optional[str] = None
     actie_validatie: Optional[str] = None
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
+    accounthouder_id: Optional[str] = None
 
 
 @router.get("/organisaties")
@@ -133,7 +151,9 @@ def list_orgs(soort: Optional[str] = None, rso: Optional[str] = None,
 
 @router.post("/organisaties", status_code=201)
 def create_org(body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    o = Organisatie(tenant_id=user.tenant_id, **body.model_dump())
+    data = body.model_dump()
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
+    o = Organisatie(tenant_id=user.tenant_id, **data)
     db.add(o); db.commit(); db.refresh(o)
     return _org(o)
 
@@ -158,7 +178,9 @@ def get_org(org_id: str, db: Session = Depends(get_db), user: User = Depends(get
 @router.patch("/organisaties/{org_id}")
 def update_org(org_id: str, body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     o = _get_org(org_id, db, user)
-    for k, v in body.model_dump().items():
+    data = body.model_dump()
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
+    for k, v in data.items():
         setattr(o, k, v)
     db.commit(); db.refresh(o)
     return _org(o)
@@ -180,6 +202,7 @@ class CpBody(BaseModel):
     naam: Optional[str] = None
     functie: Optional[str] = None
     email: Optional[str] = None
+    linkedin: Optional[str] = None
     telefoon: Optional[str] = None
     bron_url: Optional[str] = None
     bron_type: Optional[str] = None
@@ -319,6 +342,8 @@ class ShBody(BaseModel):
     invloed: Optional[str] = "Middel"
     betrokkenheid: Optional[str] = "Middel"
     houding: Optional[str] = "Onbekend"
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
     argumenten: Optional[str] = None
     belemmeringen: Optional[str] = None
     aanpak: Optional[str] = None

@@ -61,6 +61,7 @@ export const deleteAct = (id) => req('DELETE', `/crm/activiteiten/${id}`)
 
 // Dashboard
 export const getDashboard = () => req('GET', '/crm/dashboard')
+export const getTeamleden = () => req('GET', '/crm/teamleden')
 
 // Beheer (ORG_ADMIN / PLATFORM_ADMIN)
 export const listOrgUsers  = () => req('GET', '/org/users')

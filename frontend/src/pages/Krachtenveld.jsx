@@ -8,7 +8,7 @@ const QCOLOR = { 'Actief betrekken':'#1e7d4f', 'Tevreden houden':'#c0392b', 'Mee
 const LEEG_KV = { titel:'', regio:'', organisatie_id:'', bestuurlijk_orgaan:'', operationeel_orgaan:'',
   besluitvormingsproces:'', beslissingsfrequentie:'', kernopgave:'', beslissingsdrivers:'', belemmeringen:'',
   kansen:'', waarde:'', volgende_stappen:'', notities:'', eigenaar:'' }
-const LEEG_SH = { naam:'', rol:'', invloed:'Middel', betrokkenheid:'Middel', houding:'Onbekend',
+const LEEG_SH = { naam:'', rol:'', invloed:'Middel', betrokkenheid:'Middel', houding:'Onbekend', email:'', linkedin:'',
   verantwoordelijkheden:'', doelen_belangen:'', argumenten:'', belemmeringen:'', aanpak:'',
   laatste_contact:'', volgende_stap:'' }
 
@@ -216,6 +216,10 @@ function ShForm({ data, onClose, onSave, onDelete }) {
         <Field label="Betrokkenheid"><select className="select" value={f.betrokkenheid} onChange={e => set('betrokkenheid', e.target.value)}>{niveau.map(n => <option key={n}>{n}</option>)}</select></Field>
         <Field label="Houding"><select className="select" value={f.houding} onChange={e => set('houding', e.target.value)}>
           {['Positief', 'Neutraal', 'Onbekend', 'Negatief'].map(n => <option key={n}>{n}</option>)}</select></Field>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns:'1fr 1fr' }}>
+        <Field label="E-mail"><input className="input" type="email" value={f.email || ''} onChange={e => set('email', e.target.value)} /></Field>
+        <Field label="LinkedIn"><input className="input" value={f.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
       </div>
       <Field label="Doelen / belangen"><textarea className="input" value={f.doelen_belangen || ''} onChange={e => set('doelen_belangen', e.target.value)} /></Field>
       <Field label="Belangrijkste argumenten"><textarea className="input" value={f.argumenten || ''} onChange={e => set('argumenten', e.target.value)} /></Field>

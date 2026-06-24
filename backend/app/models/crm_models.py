@@ -56,9 +56,15 @@ class Organisatie(Base):
     onderbouwing    = Column(Text, nullable=True)
     actie_validatie = Column(Text, nullable=True)
 
+    # Contact + Rhadix-accounthouder
+    email           = Column(String(255), nullable=True)
+    linkedin        = Column(String(512), nullable=True)
+    accounthouder_id = Column(GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    accounthouder = relationship("User", foreign_keys=[accounthouder_id], viewonly=True)
     contactpersonen = relationship("Contactpersoon", back_populates="organisatie",
                                    cascade="all, delete-orphan")
     krachtenvelden  = relationship("Krachtenveld", back_populates="organisatie",
@@ -79,6 +85,7 @@ class Contactpersoon(Base):
     naam           = Column(String(255), nullable=True)
     functie        = Column(String(255), nullable=True)
     email          = Column(String(255), nullable=True)
+    linkedin       = Column(String(512), nullable=True)
     telefoon       = Column(String(64), nullable=True)
     bron_url       = Column(String(1024), nullable=True)
     bron_type      = Column(String(128), nullable=True)
@@ -142,6 +149,8 @@ class Stakeholder(Base):
     invloed        = Column(String(16), nullable=True, default="Middel")  # Hoog/Middel/Laag
     betrokkenheid  = Column(String(16), nullable=True, default="Middel")  # Hoog/Middel/Laag
     houding        = Column(String(16), nullable=True, default="Onbekend")  # Positief/Neutraal/Onbekend/Negatief
+    email          = Column(String(255), nullable=True)
+    linkedin       = Column(String(512), nullable=True)
 
     argumenten     = Column(Text, nullable=True)
     belemmeringen  = Column(Text, nullable=True)
