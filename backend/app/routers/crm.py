@@ -12,6 +12,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.services.krachtenveld_generator import genereer_krachtenveld
 from app.database import get_db
 from app.models.auth_models import User
 from app.models.crm_models import (Activiteit, Contactpersoon, Krachtenveld,
@@ -267,6 +268,15 @@ def create_kv(body: KvBody, db: Session = Depends(get_db), user: User = Depends(
     k = Krachtenveld(tenant_id=user.tenant_id, **data)
     db.add(k); db.commit(); db.refresh(k)
     return _kv(k, with_sh=True)
+
+
+@router.post("/organisaties/{org_id}/genereer-krachtenveld", status_code=201)
+def genereer_kv(org_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Bouw automatisch een krachtenveld voor de organisatie: standaard RSO-rollen
+    + de gekoppelde contactpersonen als stakeholders, met voorgevulde canvas-tekst."""
+    org = _get_org(org_id, db, user)
+    kv = genereer_krachtenveld(db, user.tenant_id, org)
+    return _kv(kv, with_sh=True)
 
 
 def _get_kv(kv_id: str, db: Session, user: User) -> Krachtenveld:

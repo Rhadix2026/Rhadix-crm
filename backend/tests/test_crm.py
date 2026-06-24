@@ -59,3 +59,22 @@ def test_dashboard(client, auth):
     assert d["rso_count"] == 17
     assert d["aanbieder_count"] >= 152
     assert "kwadranten" in d and sum(d["kwadranten"].values()) >= 8
+
+
+def test_genereer_krachtenveld(client, auth):
+    # kies een RSO (GERRIT heeft seed-contactpersonen)
+    rsos = client.get("/api/crm/organisaties?soort=RSO", headers=auth).json()
+    gerrit = next((o for o in rsos if o["naam"] == "GERRIT"), rsos[0])
+    r = client.post(f"/api/crm/organisaties/{gerrit['id']}/genereer-krachtenveld", headers=auth)
+    assert r.status_code == 201, r.text
+    kv = r.json()
+    # standaard 8 rollen + minimaal de gekoppelde contactpersonen
+    assert kv["titel"].startswith("Krachtenveld GERRIT")
+    assert len(kv["stakeholders"]) >= 8
+    namen = [s["naam"] for s in kv["stakeholders"]]
+    assert "Informatiemanager / CIO" in namen
+    # canvas voorgevuld
+    assert kv["kernopgave"] and kv["beslissingsdrivers"] and kv["kansen"]
+    # kwadrant-afleiding werkt op gegenereerde stakeholders
+    cio = next(s for s in kv["stakeholders"] if s["naam"] == "Informatiemanager / CIO")
+    assert cio["kwadrant"] == "Actief betrekken"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listKv, getKv, createKv, updateKv, deleteKv, addSh, updateSh, deleteSh, listOrgs } from '../services/api'
+import { listKv, getKv, createKv, updateKv, deleteKv, addSh, updateSh, deleteSh, listOrgs, genereerKrachtenveld } from '../services/api'
 import { PageHead, Modal, Field, Toast, Bullets, HoudingBadge, NiveauBadge } from '../components/UI'
 
 const POS = { hoog:82, middel:50, laag:18 }  // betrokkenheid x%  (laag links, hoog rechts)
@@ -19,9 +19,19 @@ export default function Krachtenveld() {
   const [editSh, setEditSh] = useState(null)
   const [orgs, setOrgs] = useState([])
   const [toast, setToast] = useState('')
+  const [genOpen, setGenOpen] = useState(false)
+  const [genBusy, setGenBusy] = useState(false)
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2200) }
   function reloadList() { listKv().then(setList) }
+  async function genereer(orgId) {
+    setGenBusy(true)
+    try {
+      const kv = await genereerKrachtenveld(orgId)
+      setGenOpen(false); reloadList(); setSel(await getKv(kv.id)); flash('Krachtenveld gegenereerd')
+    } catch (e) { alert(e.message) }
+    finally { setGenBusy(false) }
+  }
   useEffect(() => { reloadList(); listOrgs('?soort=RSO').then(setOrgs) }, [])
   async function open(id) { setSel(await getKv(id)) }
   async function refresh() { if (sel) setSel(await getKv(sel.id)) }
@@ -44,7 +54,10 @@ export default function Krachtenveld() {
   if (!sel) return (
     <div>
       <PageHead title="Krachtenveld" sub="Stakeholders, rollen, invloed en impact op besluitvorming."
-        actions={<button className="btn btn-primary" onClick={() => setEditKv({ ...LEEG_KV })}>+ Krachtenveld</button>} />
+        actions={<>
+          <button className="btn" onClick={() => setGenOpen(true)}>✨ Genereer krachtenveld</button>
+          <button className="btn btn-primary" onClick={() => setEditKv({ ...LEEG_KV })}>+ Krachtenveld</button>
+        </>} />
       <div className="grid" style={{ gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))' }}>
         {list.map(k => (
           <div key={k.id} className="card card-pad clickable" style={{ cursor:'pointer' }} onClick={() => open(k.id)}>
@@ -55,6 +68,7 @@ export default function Krachtenveld() {
         ))}
         {!list.length && <p className="muted">Nog geen krachtenvelden. Maak er één aan.</p>}
       </div>
+      {genOpen && <GenModal orgs={orgs} busy={genBusy} onClose={() => setGenOpen(false)} onGen={genereer} />}
       {editKv && <KvForm data={editKv} orgs={orgs} onClose={() => setEditKv(null)} onSave={saveKv} />}
       <Toast msg={toast} />
     </div>
@@ -211,6 +225,31 @@ function ShForm({ data, onClose, onSave, onDelete }) {
         <Field label="Laatste contact"><input className="input" value={f.laatste_contact || ''} onChange={e => set('laatste_contact', e.target.value)} /></Field>
         <Field label="Volgende stap"><input className="input" value={f.volgende_stap || ''} onChange={e => set('volgende_stap', e.target.value)} /></Field>
       </div>
+    </Modal>
+  )
+}
+
+function GenModal({ orgs, busy, onClose, onGen }) {
+  const [orgId, setOrgId] = useState('')
+  return (
+    <Modal title="Genereer krachtenveld" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Annuleren</button>
+        <button className="btn btn-primary" disabled={!orgId || busy} onClick={() => onGen(orgId)}>
+          {busy ? 'Bezig…' : '✨ Genereren'}
+        </button>
+      </>}>
+      <p className="small muted" style={{ marginBottom:12 }}>
+        Kies een RSO. We bouwen een krachtenveld op met de standaard RSO-rollen op de matrix
+        en zetten de gekoppelde contactpersonen automatisch om naar stakeholders. Kernopgave,
+        beslissingsdrivers en kansen worden voorgevuld — daarna zelf bij te schaven.
+      </p>
+      <Field label="RSO / organisatie">
+        <select className="select" value={orgId} onChange={e => setOrgId(e.target.value)}>
+          <option value="">— Kies een RSO —</option>
+          {orgs.map(o => <option key={o.id} value={o.id}>{o.naam}{o.aantal_contacten ? ` · ${o.aantal_contacten} contacten` : ''}</option>)}
+        </select>
+      </Field>
     </Modal>
   )
 }
