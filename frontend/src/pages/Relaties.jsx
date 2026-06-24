@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { listOrgs, getOrg, createOrg, updateOrg, deleteOrg, getTeamleden } from '../services/api'
 import { PageHead, BetrouwBadge, Modal, Field, Toast, Bullets } from '../components/UI'
 
-const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', website:'',
+const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', plaats:'', kvk:'', website:'',
   bron_url:'', bron_opmerking:'', aantal_aangesloten:null, focus_themas:'', rso_naam:'',
   betrouwbaarheid:'', onderbouwing:'', actie_validatie:'', email:'', linkedin:'', accounthouder_id:'' }
 
@@ -82,6 +82,7 @@ export default function Relaties() {
           </div>
           <KV label="Type" v={detail.type} /><KV label="Werkgebied" v={detail.werkgebied} />
           <KV label="Provincie(s)" v={detail.provincies} /><KV label="Cluster" v={detail.cluster} />
+          <KV label="Plaats" v={detail.plaats} /><KV label="KvK-nummer" v={detail.kvk} />
           {detail.soort === 'RSO' && <KV label="Aangesloten aanbieders" v={detail.aantal_aangesloten} />}
           {detail.onderbouwing && <KV label="Onderbouwing" v={detail.onderbouwing} />}
           {detail.actie_validatie && <KV label="Actie / validatie" v={detail.actie_validatie} />}
@@ -138,6 +139,8 @@ function OrgForm({ data, team = [], onClose, onSave }) {
         <Field label="Werkgebied"><input className="input" value={f.werkgebied || ''} onChange={e => set('werkgebied', e.target.value)} /></Field>
         <Field label="Provincie(s)"><input className="input" value={f.provincies || ''} onChange={e => set('provincies', e.target.value)} /></Field>
         <Field label="Cluster"><input className="input" value={f.cluster || ''} onChange={e => set('cluster', e.target.value)} /></Field>
+        <Field label="Plaats"><input className="input" value={f.plaats || ''} onChange={e => set('plaats', e.target.value)} /></Field>
+        <Field label="KvK-nummer"><input className="input" value={f.kvk || ''} onChange={e => set('kvk', e.target.value)} /></Field>
         {isRso
           ? <>
               <Field label="Aangesloten aanbieders"><input className="input" type="number" value={f.aantal_aangesloten ?? ''} onChange={e => set('aantal_aangesloten', e.target.value)} /></Field>

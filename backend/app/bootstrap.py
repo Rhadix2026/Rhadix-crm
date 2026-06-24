@@ -31,7 +31,8 @@ def _ensure_columns() -> None:
     uuid_ddl = "UUID" if engine.dialect.name == "postgresql" else "CHAR(36)"
     wanted = {
         "crm_organisaties":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)"),
-                                ("accounthouder_id", uuid_ddl)],
+                                ("accounthouder_id", uuid_ddl),
+                                ("plaats", "VARCHAR(128)"), ("kvk", "VARCHAR(16)")],
         "crm_contactpersonen": [("linkedin", "VARCHAR(512)")],
         "crm_stakeholders":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)")],
     }

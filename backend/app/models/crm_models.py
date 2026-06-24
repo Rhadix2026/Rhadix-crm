@@ -42,6 +42,8 @@ class Organisatie(Base):
     werkgebied    = Column(String(512), nullable=True)
     cluster       = Column(String(128), nullable=True)
     provincies    = Column(String(255), nullable=True)
+    plaats        = Column(String(128), nullable=True)
+    kvk           = Column(String(16), nullable=True)
     website       = Column(String(512), nullable=True)
     bron_url      = Column(String(1024), nullable=True)
     bron_opmerking = Column(Text, nullable=True)

@@ -43,6 +43,7 @@ def _org(o: Organisatie) -> dict:
     return {
         "id": str(o.id), "soort": o.soort, "naam": o.naam, "type": o.type,
         "werkgebied": o.werkgebied, "cluster": o.cluster, "provincies": o.provincies,
+        "plaats": o.plaats, "kvk": o.kvk,
         "website": o.website, "bron_url": o.bron_url, "bron_opmerking": o.bron_opmerking,
         "aantal_aangesloten": o.aantal_aangesloten, "focus_themas": o.focus_themas,
         "rso_naam": o.rso_naam, "betrouwbaarheid": o.betrouwbaarheid,
@@ -121,6 +122,8 @@ class OrgBody(BaseModel):
     werkgebied: Optional[str] = None
     cluster: Optional[str] = None
     provincies: Optional[str] = None
+    plaats: Optional[str] = None
+    kvk: Optional[str] = None
     website: Optional[str] = None
     bron_url: Optional[str] = None
     bron_opmerking: Optional[str] = None
