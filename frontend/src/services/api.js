@@ -69,3 +69,12 @@ export const createOrgUser = (b) => req('POST', '/org/users', b)
 export const toggleUser    = (id) => req('PATCH', `/org/users/${id}/deactivate`)
 export const resetUserPwd  = (id, new_password) => req('POST', `/org/users/${id}/reset-password`, { new_password })
 export const platformStats = () => req('GET', '/admin/stats')
+
+// ── Taken / workflow ─────────────────────────────────────────────────────────
+export const listTasks        = (params = '') => req('GET', `/tasks${params}`)
+export const taskSummary      = () => req('GET', '/tasks/summary')
+export const assignableUsers  = () => req('GET', '/tasks/assignable-users')
+export const createTask       = (b) => req('POST', '/tasks', b)
+export const createTasksBulk  = (b) => req('POST', '/tasks/bulk', b)
+export const updateTask       = (id, b) => req('PATCH', `/tasks/${id}`, b)
+export const deleteTask       = (id) => req('DELETE', `/tasks/${id}`)
