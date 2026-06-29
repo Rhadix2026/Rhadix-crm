@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { listCps, createCp, updateCp, deleteCp, listOrgs } from '../services/api'
 import { PageHead, Modal, Field, Toast } from '../components/UI'
 
-const LEEG = { categorie:'RSO', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'',
+const LEEG = { categorie:'RSO', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
   naam:'', functie:'', email:'', telefoon:'', zekerheid:'', bron_url:'', bron_type:'', opmerking:'' }
 const ZCLS = { hoog:'b-green', middel:'b-amber', laag:'b-red' }
 
@@ -79,6 +79,7 @@ function CpForm({ data, orgs, onClose, onSave }) {
         <Field label="Zekerheid"><select className="select" value={f.zekerheid || ''} onChange={e => set('zekerheid', e.target.value)}>
           <option value="">—</option><option>Hoog</option><option>Middel</option><option>Laag</option></select></Field>
         <Field label="E-mail"><input className="input" value={f.email || ''} onChange={e => set('email', e.target.value)} /></Field>
+        <Field label="LinkedIn"><input className="input" value={f.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
         <Field label="Telefoon"><input className="input" value={f.telefoon || ''} onChange={e => set('telefoon', e.target.value)} /></Field>
       </div>
       <Field label="Opmerking / actie"><textarea className="input" value={f.opmerking || ''} onChange={e => set('opmerking', e.target.value)} /></Field>

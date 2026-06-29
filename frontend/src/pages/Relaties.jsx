@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { listOrgs, getOrg, createOrg, updateOrg, deleteOrg } from '../services/api'
+import { listOrgs, getOrg, createOrg, updateOrg, deleteOrg, getTeamleden } from '../services/api'
 import { PageHead, BetrouwBadge, Modal, Field, Toast, Bullets } from '../components/UI'
 
-const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', website:'',
+const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', plaats:'', kvk:'', website:'',
   bron_url:'', bron_opmerking:'', aantal_aangesloten:null, focus_themas:'', rso_naam:'',
-  betrouwbaarheid:'', onderbouwing:'', actie_validatie:'' }
+  betrouwbaarheid:'', onderbouwing:'', actie_validatie:'', email:'', linkedin:'', accounthouder_id:'' }
 
 export default function Relaties() {
   const [soort, setSoort] = useState('')
@@ -13,6 +13,7 @@ export default function Relaties() {
   const [detail, setDetail] = useState(null)
   const [edit, setEdit] = useState(null)
   const [toast, setToast] = useState('')
+  const [team, setTeam] = useState([])
 
   function load() {
     const p = new URLSearchParams()
@@ -22,6 +23,7 @@ export default function Relaties() {
     listOrgs(qs ? `?${qs}` : '').then(setRows)
   }
   useEffect(() => { load() }, [soort])
+  useEffect(() => { getTeamleden().then(setTeam).catch(() => {}) }, [])
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [q])
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2200) }
@@ -80,10 +82,14 @@ export default function Relaties() {
           </div>
           <KV label="Type" v={detail.type} /><KV label="Werkgebied" v={detail.werkgebied} />
           <KV label="Provincie(s)" v={detail.provincies} /><KV label="Cluster" v={detail.cluster} />
+          <KV label="Plaats" v={detail.plaats} /><KV label="KvK-nummer" v={detail.kvk} />
           {detail.soort === 'RSO' && <KV label="Aangesloten aanbieders" v={detail.aantal_aangesloten} />}
           {detail.onderbouwing && <KV label="Onderbouwing" v={detail.onderbouwing} />}
           {detail.actie_validatie && <KV label="Actie / validatie" v={detail.actie_validatie} />}
           {detail.bron_url && <KV label="Bron" v={detail.bron_url} />}
+          {detail.email && <div style={{ margin:'4px 0' }}><span className="muted small">E-mail: </span><a href={`mailto:${detail.email}`}>{detail.email}</a></div>}
+          {detail.linkedin && <div style={{ margin:'4px 0' }}><span className="muted small">LinkedIn: </span><a href={detail.linkedin} target="_blank" rel="noreferrer">{detail.linkedin}</a></div>}
+          {detail.accounthouder && <div style={{ margin:'4px 0' }}><span className="muted small">Accounthouder (Rhadix): </span><b>{detail.accounthouder.naam}</b>{detail.accounthouder.email ? ` · ${detail.accounthouder.email}` : ''}</div>}
 
           <div className="section-title">Contactpersonen ({detail.contactpersonen?.length || 0})</div>
           {detail.contactpersonen?.length
@@ -101,7 +107,7 @@ export default function Relaties() {
         </Modal>
       )}
 
-      {edit && <OrgForm data={edit} onClose={() => setEdit(null)} onSave={save} />}
+      {edit && <OrgForm data={edit} team={team} onClose={() => setEdit(null)} onSave={save} />}
       <Toast msg={toast} />
     </div>
   )
@@ -112,7 +118,7 @@ function KV({ label, v }) {
   return <div style={{ margin:'4px 0' }}><span className="muted small">{label}: </span><span>{v}</span></div>
 }
 
-function OrgForm({ data, onClose, onSave }) {
+function OrgForm({ data, team = [], onClose, onSave }) {
   const [f, setF] = useState(data)
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
   const isRso = f.soort === 'RSO'
@@ -133,6 +139,8 @@ function OrgForm({ data, onClose, onSave }) {
         <Field label="Werkgebied"><input className="input" value={f.werkgebied || ''} onChange={e => set('werkgebied', e.target.value)} /></Field>
         <Field label="Provincie(s)"><input className="input" value={f.provincies || ''} onChange={e => set('provincies', e.target.value)} /></Field>
         <Field label="Cluster"><input className="input" value={f.cluster || ''} onChange={e => set('cluster', e.target.value)} /></Field>
+        <Field label="Plaats"><input className="input" value={f.plaats || ''} onChange={e => set('plaats', e.target.value)} /></Field>
+        <Field label="KvK-nummer"><input className="input" value={f.kvk || ''} onChange={e => set('kvk', e.target.value)} /></Field>
         {isRso
           ? <>
               <Field label="Aangesloten aanbieders"><input className="input" type="number" value={f.aantal_aangesloten ?? ''} onChange={e => set('aantal_aangesloten', e.target.value)} /></Field>
@@ -144,7 +152,13 @@ function OrgForm({ data, onClose, onSave }) {
                 <option value="">—</option><option>Hoog</option><option>Midden</option><option>Laag</option></select></Field>
             </>}
       </div>
-      <Field label="Bron-URL"><input className="input" value={f.bron_url || ''} onChange={e => set('bron_url', e.target.value)} /></Field>
+      <div className="grid" style={{ gridTemplateColumns:'1fr 1fr' }}>
+        <Field label="E-mail"><input className="input" type="email" value={f.email || ''} onChange={e => set('email', e.target.value)} /></Field>
+        <Field label="LinkedIn"><input className="input" value={f.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="https://linkedin.com/…" /></Field>
+        <Field label="Bron-URL"><input className="input" value={f.bron_url || ''} onChange={e => set('bron_url', e.target.value)} /></Field>
+        <Field label="Accounthouder (Rhadix)"><select className="select" value={f.accounthouder_id || ''} onChange={e => set('accounthouder_id', e.target.value)}>
+          <option value="">— Geen —</option>{team.map(t => <option key={t.id} value={t.id}>{t.naam}</option>)}</select></Field>
+      </div>
       {!isRso && <Field label="Onderbouwing"><textarea className="input" value={f.onderbouwing || ''} onChange={e => set('onderbouwing', e.target.value)} /></Field>}
     </Modal>
   )

@@ -12,6 +12,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.services.krachtenveld_generator import genereer_krachtenveld
 from app.database import get_db
 from app.models.auth_models import User
 from app.models.crm_models import (Activiteit, Contactpersoon, Krachtenveld,
@@ -42,10 +43,15 @@ def _org(o: Organisatie) -> dict:
     return {
         "id": str(o.id), "soort": o.soort, "naam": o.naam, "type": o.type,
         "werkgebied": o.werkgebied, "cluster": o.cluster, "provincies": o.provincies,
+        "plaats": o.plaats, "kvk": o.kvk,
         "website": o.website, "bron_url": o.bron_url, "bron_opmerking": o.bron_opmerking,
         "aantal_aangesloten": o.aantal_aangesloten, "focus_themas": o.focus_themas,
         "rso_naam": o.rso_naam, "betrouwbaarheid": o.betrouwbaarheid,
         "onderbouwing": o.onderbouwing, "actie_validatie": o.actie_validatie,
+        "email": o.email, "linkedin": o.linkedin,
+        "accounthouder_id": str(o.accounthouder_id) if o.accounthouder_id else None,
+        "accounthouder": ({"id": str(o.accounthouder.id), "naam": o.accounthouder.full_name,
+                           "email": o.accounthouder.email} if o.accounthouder else None),
         "aantal_contacten": len(o.contactpersonen), "aantal_krachtenvelden": len(o.krachtenvelden),
     }
 
@@ -55,6 +61,7 @@ def _cp(c: Contactpersoon) -> dict:
         "id": str(c.id), "organisatie_id": str(c.organisatie_id) if c.organisatie_id else None,
         "categorie": c.categorie, "organisatie_naam": c.organisatie_naam, "rso_regio": c.rso_regio,
         "rolniveau": c.rolniveau, "naam": c.naam, "functie": c.functie, "email": c.email,
+        "linkedin": c.linkedin,
         "telefoon": c.telefoon, "bron_url": c.bron_url, "bron_type": c.bron_type,
         "zekerheid": c.zekerheid, "opmerking": c.opmerking,
     }
@@ -67,6 +74,7 @@ def _sh(s: Stakeholder) -> dict:
         "invloed": s.invloed, "betrokkenheid": s.betrokkenheid, "houding": s.houding,
         "argumenten": s.argumenten, "belemmeringen": s.belemmeringen, "aanpak": s.aanpak,
         "laatste_contact": s.laatste_contact, "volgende_stap": s.volgende_stap,
+        "email": s.email, "linkedin": s.linkedin,
         "kwadrant": _quadrant(s.invloed, s.betrokkenheid),
     }
 
@@ -98,6 +106,15 @@ def _act(a: Activiteit) -> dict:
 
 
 # ── ORGANISATIES ───────────────────────────────────────────────────────────────
+@router.get("/teamleden")
+def list_teamleden(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Rhadix-teamleden (gebruikers binnen deze tenant) — voor de accounthouder-keuze."""
+    users = (db.query(User)
+             .filter(User.tenant_id == user.tenant_id, User.is_active == True)
+             .order_by(User.full_name).all())
+    return [{"id": str(u.id), "naam": u.full_name or u.email, "email": u.email} for u in users]
+
+
 class OrgBody(BaseModel):
     soort: str = "VVT"
     naam: str
@@ -105,6 +122,8 @@ class OrgBody(BaseModel):
     werkgebied: Optional[str] = None
     cluster: Optional[str] = None
     provincies: Optional[str] = None
+    plaats: Optional[str] = None
+    kvk: Optional[str] = None
     website: Optional[str] = None
     bron_url: Optional[str] = None
     bron_opmerking: Optional[str] = None
@@ -114,6 +133,9 @@ class OrgBody(BaseModel):
     betrouwbaarheid: Optional[str] = None
     onderbouwing: Optional[str] = None
     actie_validatie: Optional[str] = None
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
+    accounthouder_id: Optional[str] = None
 
 
 @router.get("/organisaties")
@@ -132,7 +154,9 @@ def list_orgs(soort: Optional[str] = None, rso: Optional[str] = None,
 
 @router.post("/organisaties", status_code=201)
 def create_org(body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    o = Organisatie(tenant_id=user.tenant_id, **body.model_dump())
+    data = body.model_dump()
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
+    o = Organisatie(tenant_id=user.tenant_id, **data)
     db.add(o); db.commit(); db.refresh(o)
     return _org(o)
 
@@ -157,7 +181,9 @@ def get_org(org_id: str, db: Session = Depends(get_db), user: User = Depends(get
 @router.patch("/organisaties/{org_id}")
 def update_org(org_id: str, body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     o = _get_org(org_id, db, user)
-    for k, v in body.model_dump().items():
+    data = body.model_dump()
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
+    for k, v in data.items():
         setattr(o, k, v)
     db.commit(); db.refresh(o)
     return _org(o)
@@ -179,6 +205,7 @@ class CpBody(BaseModel):
     naam: Optional[str] = None
     functie: Optional[str] = None
     email: Optional[str] = None
+    linkedin: Optional[str] = None
     telefoon: Optional[str] = None
     bron_url: Optional[str] = None
     bron_type: Optional[str] = None
@@ -269,6 +296,15 @@ def create_kv(body: KvBody, db: Session = Depends(get_db), user: User = Depends(
     return _kv(k, with_sh=True)
 
 
+@router.post("/organisaties/{org_id}/genereer-krachtenveld", status_code=201)
+def genereer_kv(org_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Bouw automatisch een krachtenveld voor de organisatie: standaard RSO-rollen
+    + de gekoppelde contactpersonen als stakeholders, met voorgevulde canvas-tekst."""
+    org = _get_org(org_id, db, user)
+    kv = genereer_krachtenveld(db, user.tenant_id, org)
+    return _kv(kv, with_sh=True)
+
+
 def _get_kv(kv_id: str, db: Session, user: User) -> Krachtenveld:
     k = db.query(Krachtenveld).filter(Krachtenveld.id == _uuid(kv_id),
                                       Krachtenveld.tenant_id == user.tenant_id).first()
@@ -309,6 +345,8 @@ class ShBody(BaseModel):
     invloed: Optional[str] = "Middel"
     betrokkenheid: Optional[str] = "Middel"
     houding: Optional[str] = "Onbekend"
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
     argumenten: Optional[str] = None
     belemmeringen: Optional[str] = None
     aanpak: Optional[str] = None

@@ -48,6 +48,7 @@ export const getKv    = (id) => req('GET', `/crm/krachtenvelden/${id}`)
 export const createKv = (b) => req('POST', '/crm/krachtenvelden', b)
 export const updateKv = (id, b) => req('PATCH', `/crm/krachtenvelden/${id}`, b)
 export const deleteKv = (id) => req('DELETE', `/crm/krachtenvelden/${id}`)
+export const genereerKrachtenveld = (orgId) => req('POST', `/crm/organisaties/${orgId}/genereer-krachtenveld`)
 export const addSh    = (kvId, b) => req('POST', `/crm/krachtenvelden/${kvId}/stakeholders`, b)
 export const updateSh = (id, b) => req('PATCH', `/crm/stakeholders/${id}`, b)
 export const deleteSh = (id) => req('DELETE', `/crm/stakeholders/${id}`)
@@ -60,6 +61,7 @@ export const deleteAct = (id) => req('DELETE', `/crm/activiteiten/${id}`)
 
 // Dashboard
 export const getDashboard = () => req('GET', '/crm/dashboard')
+export const getTeamleden = () => req('GET', '/crm/teamleden')
 
 // Beheer (ORG_ADMIN / PLATFORM_ADMIN)
 export const listOrgUsers  = () => req('GET', '/org/users')

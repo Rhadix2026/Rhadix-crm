@@ -20,8 +20,34 @@ PLATFORM_SLUG = "platform"
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()
     tenant_id = _ensure_admin()
     _seed_crm(tenant_id)
+
+
+def _ensure_columns() -> None:
+    """Lichtgewicht migratie: voeg ontbrekende kolommen toe aan bestaande tabellen."""
+    from sqlalchemy import inspect, text
+    uuid_ddl = "UUID" if engine.dialect.name == "postgresql" else "CHAR(36)"
+    wanted = {
+        "crm_organisaties":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)"),
+                                ("accounthouder_id", uuid_ddl),
+                                ("plaats", "VARCHAR(128)"), ("kvk", "VARCHAR(16)")],
+        "crm_contactpersonen": [("linkedin", "VARCHAR(512)")],
+        "crm_stakeholders":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)")],
+    }
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table, cols in wanted.items():
+            if not insp.has_table(table):
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for name, ddl in cols:
+                if name not in existing:
+                    try:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+                    except Exception:
+                        pass
 
 
 def _ensure_admin() -> uuid.UUID:
