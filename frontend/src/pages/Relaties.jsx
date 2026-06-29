@@ -2,6 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { listOrgs, getOrg, createOrg, updateOrg, deleteOrg, getTeamleden } from '../services/api'
 import { PageHead, BetrouwBadge, Modal, Field, Toast, Bullets } from '../components/UI'
 
+const SOORTEN = [
+  { code:'RSO',    label:'RSO' },
+  { code:'VVT',    label:'Zorgaanbieder (VVT)' },
+  { code:'ZKH',    label:'Ziekenhuis' },
+  { code:'GGZ',    label:'GGZ' },
+  { code:'GHZ',    label:'Gehandicaptenzorg' },
+  { code:'HA',     label:'Huisartsen' },
+  { code:'OVERIG', label:'Overig' },
+]
+const SOORT_BADGE = { RSO:'b-navy', VVT:'b-grey', ZKH:'b-blue', GGZ:'b-amber', GHZ:'b-green', HA:'b-blue', OVERIG:'b-grey' }
+const SOORT_OPTS = SOORTEN.filter(s => s.code !== 'RSO')
+
+
 const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', plaats:'', kvk:'', website:'',
   bron_url:'', bron_opmerking:'', aantal_aangesloten:null, focus_themas:'', rso_naam:'',
   betrouwbaarheid:'', onderbouwing:'', actie_validatie:'', email:'', linkedin:'', accounthouder_id:'' }
@@ -39,12 +52,13 @@ export default function Relaties() {
 
   return (
     <div>
-      <PageHead title="Relaties" sub="RSO's en zorgaanbieders (VVT). Indicatieve mapping — valideren vóór formeel gebruik."
+      <PageHead title="Relaties" sub="RSO's en zorgaanbieders (VVT, ziekenhuizen, GGZ, GHZ, huisartsen). Indicatieve mapping — valideren vóór formeel gebruik."
         actions={<button className="btn btn-primary" onClick={() => setEdit({ ...LEEG })}>+ Relatie</button>} />
 
       <div className="card card-pad row" style={{ marginBottom:14, gap:10 }}>
         <select className="select" style={{ width:160 }} value={soort} onChange={e => setSoort(e.target.value)}>
-          <option value="">Alle soorten</option><option value="RSO">RSO</option><option value="VVT">Zorgaanbieder</option>
+          <option value="">Alle soorten</option>
+          {SOORTEN.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
         </select>
         <input className="input" placeholder="Zoek op naam, regio of provincie…" value={q} onChange={e => setQ(e.target.value)} />
         <span className="muted small" style={{ whiteSpace:'nowrap' }}>{rows.length} resultaten</span>
@@ -56,11 +70,11 @@ export default function Relaties() {
           <tbody>
             {rows.map(o => (
               <tr key={o.id} className="clickable" onClick={() => open(o.id)}>
-                <td><span className={`badge ${o.soort === 'RSO' ? 'b-navy' : 'b-grey'}`}>{o.soort}</span></td>
+                <td><span className={`badge ${SOORT_BADGE[o.soort] || 'b-grey'}`}>{o.soort}</span></td>
                 <td><b>{o.naam}</b>{o.type && <div className="small muted">{o.type}</div>}</td>
                 <td className="small muted">{o.werkgebied || '—'}</td>
                 <td className="small">{o.rso_naam || (o.soort === 'RSO' ? `${o.aantal_aangesloten ?? 0} aanbieders` : '—')}</td>
-                <td>{o.soort === 'VVT' ? <BetrouwBadge value={o.betrouwbaarheid} /> : '—'}</td>
+                <td>{o.soort !== 'RSO' ? <BetrouwBadge value={o.betrouwbaarheid} /> : '—'}</td>
                 <td>{o.aantal_contacten || 0}</td>
               </tr>
             ))}
@@ -76,8 +90,8 @@ export default function Relaties() {
             <button className="btn btn-primary" onClick={() => setDetail(null)}>Sluiten</button>
           </>}>
           <div className="row" style={{ gap:8, marginBottom:6 }}>
-            <span className={`badge ${detail.soort === 'RSO' ? 'b-navy' : 'b-grey'}`}>{detail.soort}</span>
-            {detail.soort === 'VVT' && <BetrouwBadge value={detail.betrouwbaarheid} />}
+            <span className={`badge ${SOORT_BADGE[detail.soort] || 'b-grey'}`}>{detail.soort}</span>
+            {detail.soort !== 'RSO' && <BetrouwBadge value={detail.betrouwbaarheid} />}
             {detail.rso_naam && <span className="badge b-blue">RSO: {detail.rso_naam}</span>}
           </div>
           <KV label="Type" v={detail.type} /><KV label="Werkgebied" v={detail.werkgebied} />
@@ -133,7 +147,7 @@ function OrgForm({ data, team = [], onClose, onSave }) {
         <button className="btn btn-primary" onClick={submit} disabled={!f.naam}>Opslaan</button></>}>
       <div className="grid" style={{ gridTemplateColumns:'1fr 1fr' }}>
         <Field label="Soort"><select className="select" value={f.soort} onChange={e => set('soort', e.target.value)}>
-          <option value="VVT">Zorgaanbieder</option><option value="RSO">RSO</option></select></Field>
+          <option value="RSO">RSO</option>{SOORT_OPTS.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}</select></Field>
         <Field label="Naam"><input className="input" value={f.naam} onChange={e => set('naam', e.target.value)} /></Field>
         <Field label="Type"><input className="input" value={f.type || ''} onChange={e => set('type', e.target.value)} /></Field>
         <Field label="Werkgebied"><input className="input" value={f.werkgebied || ''} onChange={e => set('werkgebied', e.target.value)} /></Field>
