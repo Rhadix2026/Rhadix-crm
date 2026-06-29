@@ -10,6 +10,7 @@ from pathlib import Path
 from app.database import Base, SessionLocal, engine
 from app.models.auth_models import Tenant, User, UserRole
 from app.models import crm_models  # noqa: F401  (tabellen registreren)
+from app.models import task_models  # noqa: F401  (tasks-tabel registreren)
 from app.models.crm_models import (Contactpersoon, Krachtenveld, Organisatie,
                                     Stakeholder)
 from app.auth.security import hash_password

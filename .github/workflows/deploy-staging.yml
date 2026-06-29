@@ -73,6 +73,10 @@ jobs:
             echo "STAGING_ADMIN_PASSWORD=${{ secrets.STAGING_ADMIN_PASSWORD }}"         >> /opt/crm-app/.env.staging
             echo "STAGING_CENTRAL_JWT_PUBLIC_KEY=${{ secrets.STAGING_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.staging
             chmod 600 /opt/crm-app/.env.staging
+            if [ -f /opt/crm-app/mail.env ]; then
+              cat /opt/crm-app/mail.env >> /opt/crm-app/.env.staging
+              echo "mail.env toegevoegd aan .env.staging"
+            fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             COMPOSE="docker compose -p crm-staging -f /opt/crm-app/docker-compose.staging.yml --env-file /opt/crm-app/.env.staging"
             $COMPOSE pull

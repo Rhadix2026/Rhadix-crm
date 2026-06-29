@@ -92,6 +92,10 @@ jobs:
             echo "RHADIX_ADMIN_PASSWORD=${{ secrets.PROD_ADMIN_PASSWORD }}"   >> /opt/crm-app/.env.production
             echo "CENTRAL_JWT_PUBLIC_KEY=${{ secrets.PROD_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.production
             chmod 600 /opt/crm-app/.env.production
+            if [ -f /opt/crm-app/mail.env ]; then
+              cat /opt/crm-app/mail.env >> /opt/crm-app/.env.production
+              echo "mail.env toegevoegd aan .env.production"
+            fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             $COMPOSE pull || { echo "pull mislukt"; exit 1; }
             $COMPOSE up -d --remove-orphans
