@@ -24,6 +24,11 @@ from app.database import Base, GUID
 # Organisatie-soort
 SOORT_RSO = "RSO"   # Regionale Samenwerkingsorganisatie
 SOORT_VVT = "VVT"   # Zorgaanbieder (VVT/GZ/GGZ/zorggroep)
+SOORT_ZKH = "ZKH"      # Ziekenhuis
+SOORT_GGZ = "GGZ"      # Geestelijke gezondheidszorg
+SOORT_GHZ = "GHZ"      # Gehandicaptenzorg
+SOORT_HA  = "HA"       # Huisartsen(organisatie)/zorggroep
+SOORT_OVERIG = "OVERIG"  # Revalidatie/overig niet-VVT
 
 # Niveaus / waarden (vrije strings, UI mapt naar kleuren)
 NIVEAUS   = ("Hoog", "Middel", "Laag")
