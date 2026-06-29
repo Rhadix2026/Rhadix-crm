@@ -448,16 +448,16 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(get_current_us
         return db.query(func.count(model.id)).filter(model.tenant_id == t, *filt).scalar() or 0
 
     rso_count = cnt(Organisatie, Organisatie.soort == "RSO")
-    vvt_count = cnt(Organisatie, Organisatie.soort == "VVT")
+    vvt_count = cnt(Organisatie, Organisatie.soort != "RSO")   # alle zorgaanbieders (VVT + niet-VVT)
 
     per_betrouwbaarheid = dict(
         db.query(Organisatie.betrouwbaarheid, func.count(Organisatie.id))
-          .filter(Organisatie.tenant_id == t, Organisatie.soort == "VVT")
+          .filter(Organisatie.tenant_id == t, Organisatie.soort != "RSO")
           .group_by(Organisatie.betrouwbaarheid).all())
 
     # aanbieders per RSO
     per_rso = db.query(Organisatie.rso_naam, func.count(Organisatie.id))\
-                .filter(Organisatie.tenant_id == t, Organisatie.soort == "VVT")\
+                .filter(Organisatie.tenant_id == t, Organisatie.soort != "RSO")\
                 .group_by(Organisatie.rso_naam).order_by(func.count(Organisatie.id).desc()).all()
 
     # stakeholders per kwadrant
@@ -468,8 +468,13 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(get_current_us
     houding = dict(db.query(Stakeholder.houding, func.count(Stakeholder.id))
                      .filter(Stakeholder.tenant_id == t).group_by(Stakeholder.houding).all())
 
+    per_sector = dict(db.query(Organisatie.soort, func.count(Organisatie.id))
+                      .filter(Organisatie.tenant_id == t, Organisatie.soort != "RSO")
+                      .group_by(Organisatie.soort).all())
+
     return {
         "rso_count": rso_count,
+        "per_sector": {k or "?": v for k, v in per_sector.items()},
         "aanbieder_count": vvt_count,
         "contactpersoon_count": cnt(Contactpersoon),
         "krachtenveld_count": cnt(Krachtenveld),
