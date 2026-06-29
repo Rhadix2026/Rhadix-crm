@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.bootstrap import init_db
-from app.routers import health, meta, admin, org, crm
+from app.routers import health, meta, admin, org, crm, tasks
 from app.auth.router import router as auth_router
 
 APP_VERSION = "0.1.0"
@@ -35,6 +35,7 @@ app.include_router(auth_router, prefix="/api/auth")
 app.include_router(admin.router, prefix="/api/admin")
 app.include_router(org.router, prefix="/api/org")
 app.include_router(crm.router, prefix="/api/crm")
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 
 
 @app.get("/api")

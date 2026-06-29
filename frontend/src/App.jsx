@@ -9,6 +9,7 @@ import Krachtenveld from './pages/Krachtenveld'
 import Contactpersonen from './pages/Contactpersonen'
 import Opvolging from './pages/Opvolging'
 import Beheer from './pages/Beheer'
+import Taken from './pages/Taken'
 
 const IS_STAGING = (import.meta.env.VITE_RHADIX_ENV || '').toLowerCase() === 'staging'
 
@@ -48,6 +49,7 @@ export default function App() {
     { key:'krachtenveld', label:'Krachtenveld' },
     { key:'contacten', label:'Contactpersonen' },
     { key:'opvolging', label:'Opvolging' },
+    { key:'taken', label:'Taken' },
     ...(isAdmin ? [{ key:'beheer', label:'Beheer' }] : []),
   ]
 
@@ -62,6 +64,7 @@ export default function App() {
         {tab === 'krachtenveld' && <Krachtenveld />}
         {tab === 'contacten'    && <Contactpersonen />}
         {tab === 'opvolging'    && <Opvolging />}
+        {tab === 'taken'        && <Taken authUser={authUser} />}
         {tab === 'beheer'       && <Beheer authUser={authUser} />}
       </div>
     </div>
