@@ -110,6 +110,7 @@ def _sh(s: Stakeholder) -> dict:
 def _kv(k: Krachtenveld, with_sh=False) -> dict:
     d = {
         "id": str(k.id), "organisatie_id": str(k.organisatie_id) if k.organisatie_id else None,
+        "organisatie_naam": (k.organisatie.naam if k.organisatie else None),
         "titel": k.titel, "regio": k.regio, "bestuurlijk_orgaan": k.bestuurlijk_orgaan,
         "operationeel_orgaan": k.operationeel_orgaan, "besluitvormingsproces": k.besluitvormingsproces,
         "beslissingsfrequentie": k.beslissingsfrequentie, "kernopgave": k.kernopgave,

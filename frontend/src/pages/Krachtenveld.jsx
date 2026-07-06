@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listKv, getKv, createKv, updateKv, deleteKv, addSh, updateSh, deleteSh, listOrgs, genereerKrachtenveld } from '../services/api'
+import { listKv, getKv, createKv, updateKv, deleteKv, addSh, updateSh, deleteSh, listOrgs, listCps, genereerKrachtenveld } from '../services/api'
 import { PageHead, Modal, Field, Toast, Bullets, HoudingBadge, NiveauBadge } from '../components/UI'
 
 const POS = { hoog:82, middel:50, laag:18 }  // betrokkenheid x%  (laag links, hoog rechts)
@@ -45,6 +45,8 @@ export default function Krachtenveld() {
   const [toast, setToast] = useState('')
   const [genOpen, setGenOpen] = useState(false)
   const [genBusy, setGenBusy] = useState(false)
+  const [orgContacts, setOrgContacts] = useState([])
+  const [showContacts, setShowContacts] = useState(false)
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2200) }
   function reloadList() { listKv().then(setList) }
@@ -58,6 +60,10 @@ export default function Krachtenveld() {
   }
   useEffect(() => { reloadList(); listOrgs('?soort=RSO').then(setOrgs) }, [])
   async function open(id) { setSel(await getKv(id)) }
+  useEffect(() => {
+    setShowContacts(false); setOrgContacts([])
+    if (sel?.organisatie_id) listCps(`?organisatie_id=${sel.organisatie_id}`).then(setOrgContacts).catch(() => {})
+  }, [sel?.id])
   async function refresh() { if (sel) setSel(await getKv(sel.id)) }
 
   async function saveKv(body) {
@@ -158,6 +164,35 @@ export default function Krachtenveld() {
           {!sel.stakeholders.length && <span className="muted small">Nog geen stakeholders.</span>}
         </div>
       </div>
+
+      {/* Contactpersonen bij de gekoppelde organisatie */}
+      {sel.organisatie_id && (
+        <div className="card card-pad" style={{ marginTop:14 }}>
+          <div className="spread" style={{ cursor:'pointer' }} onClick={() => setShowContacts(v => !v)}>
+            <div className="section-title" style={{ margin:0 }}>
+              {showContacts ? '▾' : '▸'} Contactpersonen bij {sel.organisatie_naam || 'de organisatie'} ({orgContacts.length})
+            </div>
+            <span className="muted small">{showContacts ? 'inklappen' : 'uitklappen'}</span>
+          </div>
+          {showContacts && (
+            orgContacts.length ? (
+              <div className="grid" style={{ gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', marginTop:10 }}>
+                {orgContacts.map(c => (
+                  <div key={c.id} style={{ border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px' }}>
+                    <div><b>{c.naam || '—'}</b></div>
+                    {c.functie && <div className="small muted">{c.functie}</div>}
+                    {c.rolniveau && <div className="small muted">{c.rolniveau}</div>}
+                    <div className="row" style={{ gap:8, marginTop:5, flexWrap:'wrap' }}>
+                      {c.email && <a className="small" href={`mailto:${c.email}`}>{c.email}</a>}
+                      {c.telefoon && <span className="small muted">{c.telefoon}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="muted small" style={{ marginTop:8 }}>Geen contactpersonen gekoppeld aan deze organisatie.</p>
+          )}
+        </div>
+      )}
 
       {/* Canvas-blokken */}
       <div className="grid" style={{ gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', marginTop:14 }}>
