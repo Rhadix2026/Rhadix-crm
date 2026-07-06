@@ -5,6 +5,30 @@ import { PageHead, Modal, Field, Toast, Bullets, HoudingBadge, NiveauBadge } fro
 const POS = { hoog:82, middel:50, laag:18 }  // betrokkenheid x%  (laag links, hoog rechts)
 const INV = { hoog:18, middel:50, laag:82 }  // invloed y%       (hoog boven, laag onder)
 const QCOLOR = { 'Actief betrekken':'#1e7d4f', 'Tevreden houden':'#c0392b', 'Mee nemen':'#b9770f', 'Informeren':'#3b5575' }
+// Spreid stakeholders die in dezelfde matrixcel vallen (zelfde invloed+betrokkenheid)
+// uit in een kleine waaier, zodat punten en namen niet over elkaar heen vallen.
+function layoutStakeholders(stakeholders) {
+  const keyOf = s => `${POS[(s.betrokkenheid || 'middel').toLowerCase()] ?? 50}-${INV[(s.invloed || 'middel').toLowerCase()] ?? 50}`
+  const counts = {}
+  stakeholders.forEach(s => { const k = keyOf(s); counts[k] = (counts[k] || 0) + 1 })
+  const seen = {}
+  return stakeholders.map((s, i) => {
+    const bx = POS[(s.betrokkenheid || 'middel').toLowerCase()] ?? 50
+    const by = INV[(s.invloed || 'middel').toLowerCase()] ?? 50
+    const k = keyOf(s)
+    const total = counts[k]
+    const idx = (seen[k] = (seen[k] || 0)); seen[k]++
+    let x = bx, y = by
+    if (total > 1) {
+      const R = total <= 4 ? 9 : 12
+      const ang = (2 * Math.PI * idx) / total - Math.PI / 2
+      x = Math.min(93, Math.max(7, bx + Math.cos(ang) * R))
+      y = Math.min(91, Math.max(9, by + Math.sin(ang) * R))
+    }
+    return { s, i, x, y }
+  })
+}
+
 const LEEG_KV = { titel:'', regio:'', organisatie_id:'', bestuurlijk_orgaan:'', operationeel_orgaan:'',
   besluitvormingsproces:'', beslissingsfrequentie:'', kernopgave:'', beslissingsdrivers:'', belemmeringen:'',
   kansen:'', waarde:'', volgende_stappen:'', notities:'', eigenaar:'' }
@@ -46,9 +70,9 @@ export default function Krachtenveld() {
   }
   async function saveSh(body) {
     if (editSh.id) await updateSh(editSh.id, body); else await addSh(sel.id, body)
-    setEditSh(null); refresh(); flash('Stakeholder opgeslagen')
+    setEditSh(null); await refresh(); reloadList(); flash('Stakeholder opgeslagen')
   }
-  async function removeSh(id) { await deleteSh(id); refresh() }
+  async function removeSh(id) { await deleteSh(id); await refresh(); reloadList() }
 
   // ── lijst ──
   if (!sel) return (
@@ -79,7 +103,7 @@ export default function Krachtenveld() {
     <div>
       <PageHead title={sel.titel} sub={sel.regio}
         actions={<>
-          <button className="btn" onClick={() => setSel(null)}>← Overzicht</button>
+          <button className="btn" onClick={() => { reloadList(); setSel(null) }}>← Overzicht</button>
           <button className="btn" onClick={() => setEditKv(sel)}>Bewerken</button>
           <button className="btn btn-danger" onClick={() => removeKv(sel.id)}>Verwijderen</button>
         </>} />
@@ -99,16 +123,12 @@ export default function Krachtenveld() {
                 <div className="q q-ab"><span className="q-label">Actief betrekken</span></div>
                 <div className="q q-in"><span className="q-label">Informeren</span></div>
                 <div className="q q-mn"><span className="q-label">Mee nemen</span></div>
-                {sel.stakeholders.map((s, i) => {
-                  const x = POS[(s.betrokkenheid || 'middel').toLowerCase()] ?? 50
-                  const y = INV[(s.invloed || 'middel').toLowerCase()] ?? 50
-                  return (
-                    <div key={s.id} className="sh-dot" style={{ left:`${x}%`, top:`${y}%` }} onClick={() => setEditSh(s)}>
-                      <div className="pt" style={{ background:QCOLOR[s.kwadrant] || '#64748b' }}>{i + 1}</div>
-                      <div className="nm">{s.naam}</div>
-                    </div>
-                  )
-                })}
+                {layoutStakeholders(sel.stakeholders).map(({ s, i, x, y }) => (
+                  <div key={s.id} className="sh-dot" style={{ left:`${x}%`, top:`${y}%` }} onClick={() => setEditSh(s)}>
+                    <div className="pt" style={{ background:QCOLOR[s.kwadrant] || '#64748b' }}>{i + 1}</div>
+                    <div className="nm">{s.naam}</div>
+                  </div>
+                ))}
               </div>
               <div className="axis-x">Betrokkenheid bij Rhadix →</div>
             </div>
