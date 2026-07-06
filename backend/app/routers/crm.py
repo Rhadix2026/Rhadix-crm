@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -19,6 +19,28 @@ from app.models.crm_models import (Activiteit, Contactpersoon, Krachtenveld,
                                     Organisatie, Stakeholder)
 
 router = APIRouter(tags=["crm"])
+
+
+def _user_mini(u) -> dict:
+    return {"id": str(u.id), "naam": u.full_name or u.email, "email": u.email}
+
+
+def _resolve_users(ids, db: Session, user: User) -> list:
+    """Zet een lijst user-ID's om naar User-objecten binnen dezelfde tenant.
+    Onbekende of niet-tenant-eigen ID's worden stil genegeerd (dataminimaal/veilig)."""
+    if not ids:
+        return []
+    uuids, seen = [], set()
+    for i in ids:
+        if not i:
+            continue
+        u = _uuid(i, "accounthouder-ID")
+        if u not in seen:
+            seen.add(u); uuids.append(u)
+    if not uuids:
+        return []
+    return (db.query(User)
+            .filter(User.tenant_id == user.tenant_id, User.id.in_(uuids)).all())
 
 
 def _uuid(val: str, label="ID") -> uuid.UUID:
@@ -52,6 +74,8 @@ def _org(o: Organisatie) -> dict:
         "accounthouder_id": str(o.accounthouder_id) if o.accounthouder_id else None,
         "accounthouder": ({"id": str(o.accounthouder.id), "naam": o.accounthouder.full_name,
                            "email": o.accounthouder.email} if o.accounthouder else None),
+        "extra_accounthouders": [_user_mini(u) for u in o.extra_accounthouders],
+        "extra_accounthouder_ids": [str(u.id) for u in o.extra_accounthouders],
         "aantal_contacten": len(o.contactpersonen), "aantal_krachtenvelden": len(o.krachtenvelden),
     }
 
@@ -64,6 +88,10 @@ def _cp(c: Contactpersoon) -> dict:
         "linkedin": c.linkedin,
         "telefoon": c.telefoon, "bron_url": c.bron_url, "bron_type": c.bron_type,
         "zekerheid": c.zekerheid, "opmerking": c.opmerking,
+        "accounthouder_id": str(c.accounthouder_id) if c.accounthouder_id else None,
+        "accounthouder": (_user_mini(c.accounthouder) if c.accounthouder else None),
+        "extra_accounthouders": [_user_mini(u) for u in c.extra_accounthouders],
+        "extra_accounthouder_ids": [str(u.id) for u in c.extra_accounthouders],
     }
 
 
@@ -136,6 +164,7 @@ class OrgBody(BaseModel):
     email: Optional[str] = None
     linkedin: Optional[str] = None
     accounthouder_id: Optional[str] = None
+    extra_accounthouder_ids: Optional[List[str]] = None
 
 
 @router.get("/organisaties")
@@ -155,8 +184,10 @@ def list_orgs(soort: Optional[str] = None, rso: Optional[str] = None,
 @router.post("/organisaties", status_code=201)
 def create_org(body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data = body.model_dump()
+    extra = data.pop("extra_accounthouder_ids", None)
     data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
     o = Organisatie(tenant_id=user.tenant_id, **data)
+    o.extra_accounthouders = _resolve_users(extra, db, user)
     db.add(o); db.commit(); db.refresh(o)
     return _org(o)
 
@@ -182,9 +213,12 @@ def get_org(org_id: str, db: Session = Depends(get_db), user: User = Depends(get
 def update_org(org_id: str, body: OrgBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     o = _get_org(org_id, db, user)
     data = body.model_dump()
+    extra = data.pop("extra_accounthouder_ids", None)
     data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
     for k, v in data.items():
         setattr(o, k, v)
+    if extra is not None:
+        o.extra_accounthouders = _resolve_users(extra, db, user)
     db.commit(); db.refresh(o)
     return _org(o)
 
@@ -211,6 +245,8 @@ class CpBody(BaseModel):
     bron_type: Optional[str] = None
     zekerheid: Optional[str] = None
     opmerking: Optional[str] = None
+    accounthouder_id: Optional[str] = None
+    extra_accounthouder_ids: Optional[List[str]] = None
 
 
 @router.get("/contactpersonen")
@@ -229,9 +265,12 @@ def list_cps(organisatie_id: Optional[str] = None, q: Optional[str] = None,
 @router.post("/contactpersonen", status_code=201)
 def create_cp(body: CpBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data = body.model_dump()
+    extra = data.pop("extra_accounthouder_ids", None)
     if data.get("organisatie_id"):
         data["organisatie_id"] = _uuid(data["organisatie_id"])
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
     c = Contactpersoon(tenant_id=user.tenant_id, **data)
+    c.extra_accounthouders = _resolve_users(extra, db, user)
     db.add(c); db.commit(); db.refresh(c)
     return _cp(c)
 
@@ -243,10 +282,14 @@ def update_cp(cp_id: str, body: CpBody, db: Session = Depends(get_db), user: Use
     if not c:
         raise HTTPException(404, "Contactpersoon niet gevonden")
     data = body.model_dump()
+    extra = data.pop("extra_accounthouder_ids", None)
     if data.get("organisatie_id"):
         data["organisatie_id"] = _uuid(data["organisatie_id"])
+    data["accounthouder_id"] = _uuid(data["accounthouder_id"]) if data.get("accounthouder_id") else None
     for k, v in data.items():
         setattr(c, k, v)
+    if extra is not None:
+        c.extra_accounthouders = _resolve_users(extra, db, user)
     db.commit(); db.refresh(c)
     return _cp(c)
 

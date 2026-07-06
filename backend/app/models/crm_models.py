@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import (Boolean, Column, Date, DateTime, ForeignKey, Integer,
-                        String, Text)
+                        String, Table, Text)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -33,6 +33,23 @@ SOORT_OVERIG = "OVERIG"  # Revalidatie/overig niet-VVT
 # Niveaus / waarden (vrije strings, UI mapt naar kleuren)
 NIVEAUS   = ("Hoog", "Middel", "Laag")
 HOUDINGEN = ("Positief", "Neutraal", "Onbekend", "Negatief")
+
+
+# ── Koppeltabellen: extra Rhadix-accounthouders (many-to-many) ──────────────────
+# Naast de primaire `accounthouder_id` kunnen meerdere collega's gekoppeld worden.
+organisatie_accounthouders = Table(
+    "crm_organisatie_accounthouders", Base.metadata,
+    Column("organisatie_id", GUID(), ForeignKey("crm_organisaties.id", ondelete="CASCADE"),
+           primary_key=True),
+    Column("user_id", GUID(), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
+
+contactpersoon_accounthouders = Table(
+    "crm_contactpersoon_accounthouders", Base.metadata,
+    Column("contactpersoon_id", GUID(), ForeignKey("crm_contactpersonen.id", ondelete="CASCADE"),
+           primary_key=True),
+    Column("user_id", GUID(), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Organisatie(Base):
@@ -72,6 +89,8 @@ class Organisatie(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     accounthouder = relationship("User", foreign_keys=[accounthouder_id], viewonly=True)
+    extra_accounthouders = relationship("User", secondary=organisatie_accounthouders,
+                                        lazy="selectin")
     contactpersonen = relationship("Contactpersoon", back_populates="organisatie",
                                    cascade="all, delete-orphan")
     krachtenvelden  = relationship("Krachtenveld", back_populates="organisatie",
@@ -99,10 +118,16 @@ class Contactpersoon(Base):
     zekerheid      = Column(String(32), nullable=True)    # Hoog/Middel/Laag
     opmerking      = Column(Text, nullable=True)
 
+    # Rhadix-accounthouder(s): primair + extra teamleden
+    accounthouder_id = Column(GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     organisatie = relationship("Organisatie", back_populates="contactpersonen")
+    accounthouder = relationship("User", foreign_keys=[accounthouder_id], viewonly=True)
+    extra_accounthouders = relationship("User", secondary=contactpersoon_accounthouders,
+                                        lazy="selectin")
 
 
 class Krachtenveld(Base):

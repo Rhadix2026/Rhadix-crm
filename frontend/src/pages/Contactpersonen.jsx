@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { listCps, createCp, updateCp, deleteCp, listOrgs } from '../services/api'
-import { PageHead, Modal, Field, Toast } from '../components/UI'
+import { listCps, createCp, updateCp, deleteCp, listOrgs, getTeamleden } from '../services/api'
+import { PageHead, Modal, Field, Toast, TeamMultiSelect } from '../components/UI'
 
 const LEEG = { categorie:'RSO', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
-  naam:'', functie:'', email:'', telefoon:'', zekerheid:'', bron_url:'', bron_type:'', opmerking:'' }
+  naam:'', functie:'', email:'', telefoon:'', zekerheid:'', bron_url:'', bron_type:'', opmerking:'',
+  accounthouder_id:'', extra_accounthouder_ids:[] }
 const ZCLS = { hoog:'b-green', middel:'b-amber', laag:'b-red' }
 
 export default function Contactpersonen() {
@@ -12,10 +13,12 @@ export default function Contactpersonen() {
   const [orgs, setOrgs] = useState([])
   const [edit, setEdit] = useState(null)
   const [toast, setToast] = useState('')
+  const [team, setTeam] = useState([])
 
   function load() { listCps(q ? `?q=${encodeURIComponent(q)}` : '').then(setRows) }
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [q])
   useEffect(() => { listOrgs().then(setOrgs) }, [])
+  useEffect(() => { getTeamleden().then(setTeam).catch(() => {}) }, [])
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2000) }
 
   async function save(body) {
@@ -53,13 +56,13 @@ export default function Contactpersonen() {
           </tbody>
         </table>
       </div>
-      {edit && <CpForm data={edit} orgs={orgs} onClose={() => setEdit(null)} onSave={save} />}
+      {edit && <CpForm data={edit} orgs={orgs} team={team} onClose={() => setEdit(null)} onSave={save} />}
       <Toast msg={toast} />
     </div>
   )
 }
 
-function CpForm({ data, orgs, onClose, onSave }) {
+function CpForm({ data, orgs, team = [], onClose, onSave }) {
   const [f, setF] = useState(data)
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
   return (
@@ -81,7 +84,13 @@ function CpForm({ data, orgs, onClose, onSave }) {
         <Field label="E-mail"><input className="input" value={f.email || ''} onChange={e => set('email', e.target.value)} /></Field>
         <Field label="LinkedIn"><input className="input" value={f.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
         <Field label="Telefoon"><input className="input" value={f.telefoon || ''} onChange={e => set('telefoon', e.target.value)} /></Field>
+        <Field label="Accounthouder (Rhadix)"><select className="select" value={f.accounthouder_id || ''} onChange={e => set('accounthouder_id', e.target.value)}>
+          <option value="">— Geen —</option>{team.map(t => <option key={t.id} value={t.id}>{t.naam}</option>)}</select></Field>
       </div>
+      <Field label="Extra accounthouders (Rhadix)">
+        <TeamMultiSelect team={team} value={f.extra_accounthouder_ids || []} excludeId={f.accounthouder_id}
+          onChange={ids => set('extra_accounthouder_ids', ids)} />
+      </Field>
       <Field label="Opmerking / actie"><textarea className="input" value={f.opmerking || ''} onChange={e => set('opmerking', e.target.value)} /></Field>
     </Modal>
   )

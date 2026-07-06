@@ -111,6 +111,28 @@ export function Field({ label, children }) {
 
 export function Toast({ msg }) { return msg ? <div className="toast">{msg}</div> : null }
 
+// Meerdere Rhadix-collega's koppelen (extra accounthouders). `excludeId` = primair (uitgesloten).
+export function TeamMultiSelect({ team = [], value = [], onChange, excludeId }) {
+  const selected = new Set((value || []).map(String))
+  const options = team.filter(t => String(t.id) !== String(excludeId || ''))
+  function toggle(id) {
+    const next = new Set(selected)
+    next.has(String(id)) ? next.delete(String(id)) : next.add(String(id))
+    onChange(Array.from(next))
+  }
+  if (!options.length) return <span className="muted small">Geen extra teamleden beschikbaar.</span>
+  return (
+    <div className="row" style={{ flexWrap:'wrap', gap:'6px 14px' }}>
+      {options.map(t => (
+        <label key={t.id} className="row small" style={{ gap:6, cursor:'pointer', alignItems:'center' }}>
+          <input type="checkbox" checked={selected.has(String(t.id))} onChange={() => toggle(t.id)} />
+          {t.naam}
+        </label>
+      ))}
+    </div>
+  )
+}
+
 // regels (newline-gescheiden tekst) → lijst
 export function Bullets({ text }) {
   const lines = (text || '').split('\n').map(s => s.trim()).filter(Boolean)

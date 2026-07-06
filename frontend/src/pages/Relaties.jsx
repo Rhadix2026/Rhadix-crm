@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { listOrgs, getOrg, createOrg, updateOrg, deleteOrg, getTeamleden } from '../services/api'
-import { PageHead, BetrouwBadge, Modal, Field, Toast, Bullets } from '../components/UI'
+import { PageHead, BetrouwBadge, Modal, Field, Toast, Bullets, TeamMultiSelect } from '../components/UI'
 
 const SOORTEN = [
   { code:'RSO',    label:'RSO' },
@@ -17,7 +17,7 @@ const SOORT_OPTS = SOORTEN.filter(s => s.code !== 'RSO')
 
 const LEEG = { soort:'VVT', naam:'', type:'', werkgebied:'', cluster:'', provincies:'', plaats:'', kvk:'', website:'',
   bron_url:'', bron_opmerking:'', aantal_aangesloten:null, focus_themas:'', rso_naam:'',
-  betrouwbaarheid:'', onderbouwing:'', actie_validatie:'', email:'', linkedin:'', accounthouder_id:'' }
+  betrouwbaarheid:'', onderbouwing:'', actie_validatie:'', email:'', linkedin:'', accounthouder_id:'', extra_accounthouder_ids:[] }
 
 export default function Relaties() {
   const [soort, setSoort] = useState('')
@@ -104,6 +104,7 @@ export default function Relaties() {
           {detail.email && <div style={{ margin:'4px 0' }}><span className="muted small">E-mail: </span><a href={`mailto:${detail.email}`}>{detail.email}</a></div>}
           {detail.linkedin && <div style={{ margin:'4px 0' }}><span className="muted small">LinkedIn: </span><a href={detail.linkedin} target="_blank" rel="noreferrer">{detail.linkedin}</a></div>}
           {detail.accounthouder && <div style={{ margin:'4px 0' }}><span className="muted small">Accounthouder (Rhadix): </span><b>{detail.accounthouder.naam}</b>{detail.accounthouder.email ? ` · ${detail.accounthouder.email}` : ''}</div>}
+          {detail.extra_accounthouders?.length > 0 && <div style={{ margin:'4px 0' }}><span className="muted small">Extra accounthouders: </span>{detail.extra_accounthouders.map(u => u.naam).join(', ')}</div>}
 
           <div className="section-title">Contactpersonen ({detail.contactpersonen?.length || 0})</div>
           {detail.contactpersonen?.length
@@ -173,6 +174,10 @@ function OrgForm({ data, team = [], onClose, onSave }) {
         <Field label="Accounthouder (Rhadix)"><select className="select" value={f.accounthouder_id || ''} onChange={e => set('accounthouder_id', e.target.value)}>
           <option value="">— Geen —</option>{team.map(t => <option key={t.id} value={t.id}>{t.naam}</option>)}</select></Field>
       </div>
+      <Field label="Extra accounthouders (Rhadix)">
+        <TeamMultiSelect team={team} value={f.extra_accounthouder_ids || []} excludeId={f.accounthouder_id}
+          onChange={ids => set('extra_accounthouder_ids', ids)} />
+      </Field>
       {!isRso && <Field label="Onderbouwing"><textarea className="input" value={f.onderbouwing || ''} onChange={e => set('onderbouwing', e.target.value)} /></Field>}
     </Modal>
   )

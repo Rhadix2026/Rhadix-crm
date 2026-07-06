@@ -34,7 +34,8 @@ def _ensure_columns() -> None:
         "crm_organisaties":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)"),
                                 ("accounthouder_id", uuid_ddl),
                                 ("plaats", "VARCHAR(128)"), ("kvk", "VARCHAR(16)")],
-        "crm_contactpersonen": [("linkedin", "VARCHAR(512)")],
+        "crm_contactpersonen": [("linkedin", "VARCHAR(512)"),
+                                ("accounthouder_id", uuid_ddl)],
         "crm_stakeholders":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)")],
     }
     insp = inspect(engine)
