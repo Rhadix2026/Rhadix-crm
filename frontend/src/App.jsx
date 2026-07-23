@@ -26,9 +26,9 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (getAuthToken()) {
-      getMe().then(setAuthUser).catch(() => clearAuthToken()).finally(() => setLoading(false))
-    } else setLoading(false)
+    // SSO-bootstrap: altijd /auth/me proberen. Met het centrale rhadix_sso-cookie
+    // (same-origin) logt de gebruiker automatisch in, ook zonder opgeslagen token.
+    getMe().then(setAuthUser).catch(() => clearAuthToken()).finally(() => setLoading(false))
   }, [])
 
   function toggleBrand() {
