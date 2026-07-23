@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { getMe, getAuthToken, clearAuthToken } from './services/api'
 import { currentBrand } from './brand'
 import { Nav } from './components/UI'
@@ -17,6 +17,9 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('dashboard')
+  const histRef = useRef([])
+  function goTab(t) { if (t !== tab) { histRef.current.push(tab); setTab(t) } }
+  function back()   { const h = histRef.current; if (h.length) setTab(h.pop()) }
   const [brandV, setBrandV] = useState(currentBrand())
 
   useEffect(() => {
@@ -55,11 +58,10 @@ export default function App() {
 
   return (
     <div>
-      <Nav tabs={tabs} active={tab} onTab={setTab}
-           onBrandToggle={IS_STAGING ? toggleBrand : null}
+      <Nav tabs={tabs} active={tab} onTab={goTab} onBack={back}
            authUser={authUser} onLogout={logout} />
       <div className="page">
-        {tab === 'dashboard'    && <Dashboard onGo={setTab} />}
+        {tab === 'dashboard'    && <Dashboard onGo={goTab} />}
         {tab === 'relaties'     && <Relaties />}
         {tab === 'krachtenveld' && <Krachtenveld />}
         {tab === 'contacten'    && <Contactpersonen />}

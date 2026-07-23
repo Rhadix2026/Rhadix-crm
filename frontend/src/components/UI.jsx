@@ -1,6 +1,14 @@
 import React from 'react'
 import { brandInfo, currentBrand } from '../brand'
 
+// Terug-naar-platform: naar het portaal 'kies een applicatie' (env-afhankelijk).
+function _platformUrl() {
+  if (import.meta.env.VITE_PLATFORM_URL) return import.meta.env.VITE_PLATFORM_URL
+  const stag = typeof location !== 'undefined' && location.hostname.includes('staging')
+  return stag ? 'https://app-staging.rhadix.nl' : 'https://app.rhadix.nl'
+}
+
+
 // ── Merk-logo (knoop-netwerk in de huisstijl) ───────────────────────────────
 export function BrandMark({ size = 32 }) {
   return (
@@ -37,12 +45,14 @@ export function BrandLogo({ onClick }) {
 }
 
 // ── Navigatie ───────────────────────────────────────────────────────────────
-export function Nav({ tabs, active, onTab, onBrandToggle, authUser, onLogout }) {
+export function Nav({ tabs, active, onTab, onBack, authUser, onLogout }) {
   const brand = currentBrand()
   return (
     <div className="nav">
-      <div className="row" style={{ gap:24 }}>
+      <div className="row" style={{ gap:16 }}>
         <BrandLogo onClick={() => onTab(tabs[0].key)} />
+        {onBack && <button className="nav-tab" onClick={onBack} title="Terug (1 stap)">← Terug</button>}
+        <button className="nav-tab" onClick={() => { window.location.href = _platformUrl() }} title="Terug naar platform — kies een applicatie">▦ Platform</button>
         <div className="nav-tabs">
           {tabs.map(t => (
             <button key={t.key} className={`nav-tab ${active === t.key ? 'active' : ''}`}
@@ -51,11 +61,6 @@ export function Nav({ tabs, active, onTab, onBrandToggle, authUser, onLogout }) 
         </div>
       </div>
       <div className="nav-right">
-        {onBrandToggle && (
-          <button className="nav-tab" onClick={onBrandToggle} title="Wissel huisstijl (alleen staging)">
-            {brand === 'suresync' ? '← Rhadix' : 'SureSync ↗'}
-          </button>
-        )}
         {authUser && <span className="small" style={{ color:'#cdd7e8' }}>{authUser.email}</span>}
         {onLogout && <button className="nav-tab" onClick={onLogout}>Uitloggen</button>}
       </div>
