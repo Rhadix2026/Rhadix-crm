@@ -54,6 +54,7 @@ export function Nav({ tabs, active, onTab, onBack, authUser, onLogout }) {
         </div>
       </div>
       <div className="nav-right">
+        <span title="Applicatieversie" className="small" style={{ color:'rgba(255,255,255,.4)' }}>{import.meta.env.VITE_APP_VERSION || 'dev'}</span>
         {authUser && <span className="small" style={{ color:'#cdd7e8' }}>{authUser.email}</span>}
         {onLogout && <button className="nav-tab" onClick={onLogout}>Uitloggen</button>}
       </div>
