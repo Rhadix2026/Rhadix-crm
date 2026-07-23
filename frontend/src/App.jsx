@@ -19,7 +19,7 @@ export default function App() {
   const [tab, setTab] = useState('dashboard')
   const histRef = useRef([])
   function goTab(t) { if (t !== tab) { histRef.current.push(tab); setTab(t) } }
-  function back()   { const h = histRef.current; if (h.length) setTab(h.pop()) }
+  function back()   { const h = histRef.current; if (h.length) { setTab(h.pop()) } else if (typeof window !== 'undefined') { window.history.back() } }
   const [brandV, setBrandV] = useState(currentBrand())
 
   useEffect(() => {
