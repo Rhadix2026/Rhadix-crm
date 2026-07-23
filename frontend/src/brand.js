@@ -17,8 +17,7 @@ export const BRANDS = {
 }
 
 export function getInitialBrand() {
-  const fromSession = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('rhadix_brand')
-  if (fromSession && BRANDS[fromSession]) return fromSession
+  // Rhadix (navy) is standaard; alternatief merk alleen via expliciete VITE_BRAND.
   const env = (import.meta.env.VITE_BRAND || '').toLowerCase()
   return BRANDS[env] ? env : 'rhadix'
 }

@@ -32,14 +32,7 @@ export function BrandLogo({ onClick }) {
   return (
     <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, background:'none',
       border:'none', cursor:onClick?'pointer':'default', padding:0 }}>
-      <BrandMark size={32} />
-      <span style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', lineHeight:1 }}>
-        <span style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-.01em' }}>
-          {b.naam} <span style={{ color:'var(--accent)', fontWeight:600 }}>CRM</span>
-        </span>
-        <span style={{ fontSize:9, fontWeight:600, color:'var(--accent-soft)', letterSpacing:'2px',
-          textTransform:'uppercase', marginTop:2 }}>{b.tagline}</span>
-      </span>
+      <img src="/rhadix-logo.jpg" alt="Rhadix" style={{ height:36, width:'auto', objectFit:'contain' }} />
     </button>
   )
 }
