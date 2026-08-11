@@ -2,6 +2,12 @@
 
 Lees dit bestand aan het begin van elke sessie. Werk de sessie-log bij aan het einde.
 
+> **Git-workflow:** de centrale werkinstructies in `~/Developer/CLAUDE.md` zijn leidend.
+> Kort: `staging` is de ontwikkel- en integratiebranch; nooit rechtstreeks werken op of
+> pushen naar `main`; `main` wijzigen, mergen of taggen alleen op expliciete opdracht van
+> de gebruiker; bepaal vóór de eerste push de route (branch protection/rulesets) en omzeil
+> branchregels nooit. Dit bestand bevat alleen repo-specifieke kennis.
+
 ## Project
 **Rhadix CRM** — vierde applicatie van het Rhadix-platform. Stakeholder-/relatiebeheer met
 krachtenveld-analyse (invloed × betrokkenheid) rond RSO's en VVT-zorgaanbieders.
@@ -19,9 +25,10 @@ krachtenveld-analyse (invloed × betrokkenheid) rond RSO's en VVT-zorgaanbieders
 (Bestaand: DV 5174/8010·5175/8011 · Uitvraag 5176/8012·5177/8013 · Datastation 5180/8016·5181/8017.)
 
 ## Branch-strategie
-- `staging` push → auto-deploy staging.
+- Ontwikkelen gebeurt op `staging`; een push naar `staging` deployt automatisch.
 - Versie-tag `v*.*.*` op `main` → productie via GitHub Actions, handmatige goedkeuring + rollback.
-- Na main-wijziging ook naar staging mergen.
+- Een merge naar `main` en het pushen van een versie-tag: uitsluitend op expliciete
+  opdracht van de gebruiker — zie `~/Developer/CLAUDE.md`.
 
 ## Auth / identiteit
 Resource-server: accepteert centraal SureSync ID-token (RS256, `CENTRAL_JWT_PUBLIC_KEY` +
