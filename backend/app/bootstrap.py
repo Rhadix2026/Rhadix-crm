@@ -1,4 +1,16 @@
-"""bootstrap.py — tabellen aanmaken, niet-destructieve admin borgen, CRM-seed laden."""
+"""bootstrap.py — tabellen aanmaken, platform-tenant borgen, CRM-seed laden.
+
+Gebruikers worden NIET meer geseed. Authenticatie verloopt via SSO: Rhadix
+Datavalidatie geeft het centrale token uit en deze app provisioneert gebruikers
+just-in-time (zie auth/dependencies.py). Een lokaal adminaccount met een in de
+code gebakken wachtwoord heeft daardoor geen functie meer.
+
+De platform-tenant blijft wel nodig: de CRM-seed hangt eraan. Die bootstrap is
+losgekoppeld van het aanmaken van accounts.
+
+Bestaande accounts blijven staan: deze module maakt, wijzigt en verwijdert geen
+gebruikers.
+"""
 from __future__ import annotations
 
 import json
@@ -8,12 +20,11 @@ from collections import Counter
 from pathlib import Path
 
 from app.database import Base, SessionLocal, engine
-from app.models.auth_models import Tenant, User, UserRole
+from app.models.auth_models import Tenant
 from app.models import crm_models  # noqa: F401  (tabellen registreren)
 from app.models import task_models  # noqa: F401  (tasks-tabel registreren)
 from app.models.crm_models import (Contactpersoon, Krachtenveld, Organisatie,
                                     Stakeholder)
-from app.auth.security import hash_password
 
 SEED_FILE = Path(__file__).parent / "seed" / "rso_seed.json"
 PLATFORM_SLUG = "platform"
@@ -22,7 +33,7 @@ PLATFORM_SLUG = "platform"
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
-    tenant_id = _ensure_admin()
+    tenant_id = _ensure_platform_tenant()
     _seed_crm(tenant_id)
 
 
@@ -52,34 +63,22 @@ def _ensure_columns() -> None:
                         pass
 
 
-def _ensure_admin() -> uuid.UUID:
-    """Niet-destructief: borg admin@rhadix.nl (nooit TRUNCATE). AUTH_RESET=0 slaat over."""
-    email = os.getenv("RHADIX_ADMIN_EMAIL", "admin@rhadix.nl")
-    password = os.getenv("RHADIX_ADMIN_PASSWORD", "Rhadixcrm26!")
-    do = os.getenv("AUTH_RESET", "1").lower() not in ("0", "false", "no")
+def _ensure_platform_tenant() -> uuid.UUID:
+    """Borg de platform-tenant en geef de id terug voor de CRM-seed.
 
+    Volledig losgekoppeld van gebruikersaccounts: deze functie raakt de
+    users-tabel niet aan. Gebruikers ontstaan uitsluitend via SSO/JIT-provisioning.
+    """
     db = SessionLocal()
     try:
         tenant = db.query(Tenant).filter(Tenant.slug == PLATFORM_SLUG).first()
         if not tenant:
-            tenant = Tenant(id=uuid.uuid4(), slug=PLATFORM_SLUG, name="Rhadix Platform", is_active=True)
-            db.add(tenant); db.flush()
-        if do:
-            admin = db.query(User).filter(User.email == email).first()
-            if admin:
-                admin.password_hash = hash_password(password)
-                admin.is_active = True
-                admin.role = UserRole.PLATFORM_ADMIN
-                admin.tenant_id = tenant.id
-            else:
-                db.add(User(id=uuid.uuid4(), tenant_id=tenant.id, email=email,
-                            full_name="Platformbeheerder", password_hash=hash_password(password),
-                            role=UserRole.PLATFORM_ADMIN, is_active=True))
-        db.commit()
+            tenant = Tenant(id=uuid.uuid4(), slug=PLATFORM_SLUG,
+                            name="Rhadix Platform", is_active=True)
+            db.add(tenant)
+            db.commit()
+            db.refresh(tenant)
         return tenant.id
-    except Exception:
-        db.rollback()
-        raise
     finally:
         db.close()
 

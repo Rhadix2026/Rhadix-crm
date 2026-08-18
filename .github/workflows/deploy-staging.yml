@@ -92,13 +92,11 @@ jobs:
             STAGING_DB_NAME=crm_staging
             STAGING_FRONTEND_PORT=5183
             STAGING_BACKEND_PORT=8019
-            STAGING_ADMIN_EMAIL=admin@rhadix.nl
             CENTRAL_JWT_ISSUER=suresync-id
             PUBLIC_BASE_URL=https://crm-staging.rhadix.nl
             ENVEOF
             echo "STAGING_DB_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}"               >> /opt/crm-app/.env.staging
             echo "STAGING_JWT_SECRET_KEY=${{ secrets.STAGING_JWT_SECRET_KEY }}"         >> /opt/crm-app/.env.staging
-            echo "STAGING_ADMIN_PASSWORD=${{ secrets.STAGING_ADMIN_PASSWORD }}"         >> /opt/crm-app/.env.staging
             echo "STAGING_CENTRAL_JWT_PUBLIC_KEY=${{ secrets.STAGING_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.staging
             chmod 600 /opt/crm-app/.env.staging
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

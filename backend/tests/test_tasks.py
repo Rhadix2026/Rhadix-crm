@@ -7,9 +7,12 @@ def test_summary_leeg(client, auth):
     assert "tenant_open" in s  # admin ziet tenant-telling
 
 
-def test_assignable_users_bevat_admin(client, auth):
+def test_assignable_users_bevat_sso_gebruiker(client, auth):
+    """Toewijsbare gebruikers komen uit JIT-provisioning, niet uit een seed."""
+    from tests.conftest import SSO_ADMIN_EMAIL
+
     users = client.get("/api/tasks/assignable-users", headers=auth).json()
-    assert any(u["email"] == "admin@rhadix.nl" for u in users)
+    assert any(u["email"] == SSO_ADMIN_EMAIL for u in users)
 
 
 def test_aanmaken_en_lijst(client, auth):

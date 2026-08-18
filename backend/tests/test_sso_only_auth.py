@@ -57,14 +57,34 @@ def test_beschermd_crm_endpoint_werkt_met_sso(client, auth):
     assert client.get("/api/crm/organisaties", headers=auth).status_code == 200
 
 
-def test_bestaande_bootstrap_gebruiker_blijft_bestaan(client, auth):
-    """Het afsluiten van login verwijdert geen accounts: de beheerder staat er nog."""
+def test_bestaande_accounts_blijven_bestaan(client, auth):
+    """Een herstart verwijdert geen bestaande accounts.
+
+    De bootstrap seedt sinds de opruiming geen gebruikers meer, maar mag bestaande
+    accounts — zoals het functionele admin@rhadix.nl op staging — ook niet
+    aanraken. Hier nagebootst met een handmatig aangemaakt account.
+    """
+    from app.bootstrap import init_db
     from app.database import SessionLocal
-    from app.models.auth_models import User
+    from app.models.auth_models import User, UserRole
+
+    from app.bootstrap import _ensure_platform_tenant
 
     db = SessionLocal()
     try:
-        assert db.query(User).filter(User.email == "admin@rhadix.nl").first() is not None
+        bestaand = User(email="bestaand-account@test.rhadix.nl", full_name="Bestaand",
+                        password_hash=None, role=UserRole.ORG_ADMIN, is_active=True,
+                        tenant_id=_ensure_platform_tenant())
+        db.add(bestaand)
+        db.commit()
+    finally:
+        db.close()
+
+    init_db()  # simuleert een herstart/deployment
+
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.email == "bestaand-account@test.rhadix.nl").first() is not None
     finally:
         db.close()
 

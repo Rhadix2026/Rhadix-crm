@@ -26,8 +26,9 @@ services:
       DATABASE_URL:          postgresql://${STAGING_DB_USER:-crm_staging}:${STAGING_DB_PASSWORD}@crm-staging-db:5432/${STAGING_DB_NAME:-crm_staging}
       JWT_SECRET_KEY:        ${STAGING_JWT_SECRET_KEY:?Stel STAGING_JWT_SECRET_KEY in als GitHub Secret}
       RHADIX_ENV:            staging
-      RHADIX_ADMIN_EMAIL:    ${STAGING_ADMIN_EMAIL:-admin@rhadix.nl}
-      RHADIX_ADMIN_PASSWORD: ${STAGING_ADMIN_PASSWORD:?Stel STAGING_ADMIN_PASSWORD in}
+      # RHADIX_ADMIN_EMAIL/RHADIX_ADMIN_PASSWORD zijn verwijderd: de bootstrap
+      # seedt geen gebruikers meer en niets in de code leest deze variabelen nog.
+      # Gebruikers ontstaan via SSO/JIT-provisioning.
       # Lokale wachtwoord-login: standaard UIT, authenticatie verloopt via SSO
       # (Datavalidatie als identity provider). Expliciet doorgegeven zodat hij als
       # noodrem aan te zetten is zonder release: LOCAL_LOGIN_ENABLED=1 in .env.staging.
