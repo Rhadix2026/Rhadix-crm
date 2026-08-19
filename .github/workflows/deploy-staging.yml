@@ -94,6 +94,11 @@ jobs:
             STAGING_BACKEND_PORT=8019
             CENTRAL_JWT_ISSUER=suresync-id
             PUBLIC_BASE_URL=https://crm-staging.rhadix.nl
+            # Applicatietoegang: van warn naar handhaven. Een geldig SSO-token
+            # zonder 'rhadix-crm' in de apps-claim krijgt vanaf nu 403.
+            # ROLLBACK zonder release: zet deze regel in /opt/crm-app/.env.staging
+            # op warn en herstart de backend-container.
+            APP_ACCESS_ENFORCE=on
             ENVEOF
             echo "STAGING_DB_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}"               >> /opt/crm-app/.env.staging
             echo "STAGING_JWT_SECRET_KEY=${{ secrets.STAGING_JWT_SECRET_KEY }}"         >> /opt/crm-app/.env.staging
