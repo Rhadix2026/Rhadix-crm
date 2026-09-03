@@ -78,14 +78,44 @@ jobs:
             VERSION="${{ needs.build.outputs.version }}"
             COMPOSE="docker compose -p crm-prod -f /opt/crm-app/docker-compose.prod.yml --env-file /opt/crm-app/.env.production"
             PREV=$(docker inspect crm-backend --format '{{.Config.Image}}' 2>/dev/null | awk -F: '{print $NF}' || echo "")
-            cat > /opt/crm-app/.env.production << 'ENVEOF'
+            # VOLGORDE IS BEPALEND: bij een dubbele sleutel in een --env-file wint
+            # de LAATSTE regel. De persistente server-config (mail.env) stond
+            # voorheen ONDERAAN en overschreef daarmee alles wat de workflow zelf
+            # zet. Nu staat hij bovenaan als BASIS; de expliciete waarden en
+            # secrets komen daarna en winnen altijd.
+            #
+            # Deze wijziging corrigeert uitsluitend de volgorde. mail.env bevat
+            # alleen MAIL_*- en SMTP_*-sleutels; de workflow schrijft daarvan geen
+            # enkele. Er wordt dus niets verwijderd of overschreven.
+            : > /opt/crm-app/.env.production
+            chmod 600 /opt/crm-app/.env.production
+
+            # ── Persistente mailconfig als BASIS (laagste prioriteit) ─────────
+            if [ -f /opt/crm-app/mail.env ]; then
+              cat /opt/crm-app/mail.env >> /opt/crm-app/.env.production
+              echo "mail.env toegevoegd als basis"
+            fi
+
+            # ── Expliciete productiewaarden (winnen van het serverbestand) ────
+            cat >> /opt/crm-app/.env.production << 'ENVEOF'
             GHCR_ORG=rhadix2026
             DB_USER=crm
             DB_NAME=rhadix_crm
             FRONTEND_PORT=5182
             BACKEND_PORT=8018
-            RHADIX_ADMIN_EMAIL=admin@rhadix.nl
             CENTRAL_JWT_ISSUER=suresync-id
+            # ── Authenticatie & autorisatie ──────────────────────────────────
+            # Lokale wachtwoord-login uit; authenticatie verloopt via SSO.
+            LOCAL_LOGIN_ENABLED=0
+            # Applicatietoegang via de centrale apps-claim. EERSTE PRODUCTIE-
+            # RELEASE START OP WARN: weigeringen worden gelogd, niemand wordt
+            # buitengesloten. Naar 'on' pas na analyse van de productielogs en
+            # afzonderlijk akkoord per applicatie.
+            # ROLLBACK zonder release: deze regel op 'off' zetten in
+            # /opt/crm-app/.env.production en de backend herstarten.
+            APP_ACCESS_ENFORCE=warn
+            # DEPRECATED — niets leest RHADIX_ADMIN_* nog; opschoning volgt apart.
+            RHADIX_ADMIN_EMAIL=admin@rhadix.nl
             ENVEOF
             echo "CRM_VERSION=$VERSION"                                       >> /opt/crm-app/.env.production
             echo "DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}"                >> /opt/crm-app/.env.production
@@ -93,10 +123,6 @@ jobs:
             echo "RHADIX_ADMIN_PASSWORD=${{ secrets.PROD_ADMIN_PASSWORD }}"   >> /opt/crm-app/.env.production
             echo "CENTRAL_JWT_PUBLIC_KEY=${{ secrets.PROD_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.production
             chmod 600 /opt/crm-app/.env.production
-            if [ -f /opt/crm-app/mail.env ]; then
-              cat /opt/crm-app/mail.env >> /opt/crm-app/.env.production
-              echo "mail.env toegevoegd aan .env.production"
-            fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             $COMPOSE pull || { echo "pull mislukt"; exit 1; }
             $COMPOSE up -d --remove-orphans

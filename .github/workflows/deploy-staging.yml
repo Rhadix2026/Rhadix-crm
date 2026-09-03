@@ -60,24 +60,50 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             set -e
-            cat > /opt/crm-app/.env.staging << 'ENVEOF'
+            # VOLGORDE IS BEPALEND: bij een dubbele sleutel in een --env-file wint de
+            # LAATSTE regel. De persistente server-config staat daarom bovenaan; de
+            # expliciete staging-waarden en secrets komen daarna en winnen altijd.
+            #
+            # ISOLATIE: staging leest uitsluitend mail.staging.env, nooit het gedeelde
+            # mail.env (dat ook door de productie-deploy wordt gelezen).
+            : > /opt/crm-app/.env.staging
+            chmod 600 /opt/crm-app/.env.staging
+
+            # Eenmalige migratie: staging-eigen mail-config afsplitsen van het gedeelde
+            # bestand. Daarna zijn staging en productie onafhankelijk.
+            if [ ! -f /opt/crm-app/mail.staging.env ] && [ -f /opt/crm-app/mail.env ]; then
+              cp /opt/crm-app/mail.env /opt/crm-app/mail.staging.env
+              chmod 600 /opt/crm-app/mail.staging.env
+              echo "mail.staging.env afgesplitst van gedeeld mail.env (eenmalig)"
+            fi
+
+            # ── Persistente staging-mailconfig als BASIS (laagste prioriteit) ──
+            if [ -f /opt/crm-app/mail.staging.env ]; then
+              cat /opt/crm-app/mail.staging.env >> /opt/crm-app/.env.staging
+              echo "mail.staging.env toegevoegd als basis"
+            else
+              echo "LET OP: geen mail.staging.env — staging-mail blijft uit"
+            fi
+
+            # ── Expliciete staging-waarden (winnen van het serverbestand) ──────
+            cat >> /opt/crm-app/.env.staging << 'ENVEOF'
             GHCR_ORG=rhadix2026
             STAGING_DB_USER=crm_staging
             STAGING_DB_NAME=crm_staging
             STAGING_FRONTEND_PORT=5183
             STAGING_BACKEND_PORT=8019
-            STAGING_ADMIN_EMAIL=admin@rhadix.nl
             CENTRAL_JWT_ISSUER=suresync-id
+            PUBLIC_BASE_URL=https://crm-staging.rhadix.nl
+            # Applicatietoegang: van warn naar handhaven. Een geldig SSO-token
+            # zonder 'rhadix-crm' in de apps-claim krijgt vanaf nu 403.
+            # ROLLBACK zonder release: zet deze regel in /opt/crm-app/.env.staging
+            # op warn en herstart de backend-container.
+            APP_ACCESS_ENFORCE=on
             ENVEOF
             echo "STAGING_DB_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}"               >> /opt/crm-app/.env.staging
             echo "STAGING_JWT_SECRET_KEY=${{ secrets.STAGING_JWT_SECRET_KEY }}"         >> /opt/crm-app/.env.staging
-            echo "STAGING_ADMIN_PASSWORD=${{ secrets.STAGING_ADMIN_PASSWORD }}"         >> /opt/crm-app/.env.staging
             echo "STAGING_CENTRAL_JWT_PUBLIC_KEY=${{ secrets.STAGING_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.staging
             chmod 600 /opt/crm-app/.env.staging
-            if [ -f /opt/crm-app/mail.env ]; then
-              cat /opt/crm-app/mail.env >> /opt/crm-app/.env.staging
-              echo "mail.env toegevoegd aan .env.staging"
-            fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             COMPOSE="docker compose -p crm-staging -f /opt/crm-app/docker-compose.staging.yml --env-file /opt/crm-app/.env.staging"
             $COMPOSE pull

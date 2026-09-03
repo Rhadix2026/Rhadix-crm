@@ -81,9 +81,14 @@ def test_genereer_krachtenveld(client, auth):
 
 
 def test_teamleden_en_accounthouder(client, auth):
+    from tests.conftest import SSO_ADMIN_EMAIL
+
     team = client.get("/api/crm/teamleden", headers=auth).json()
-    assert team and team[0]["email"] == "admin@rhadix.nl"
-    me_id = team[0]["id"]
+    # Volgorde-onafhankelijk: de tenant kan meer gebruikers bevatten dan alleen
+    # de ingelogde SSO-gebruiker.
+    ik = next((t for t in team if t["email"] == SSO_ADMIN_EMAIL), None)
+    assert ik is not None, f"SSO-gebruiker niet in teamleden: {[t['email'] for t in team]}"
+    me_id = ik["id"]
     # organisatie met e-mail, linkedin én accounthouder
     org = client.post("/api/crm/organisaties", headers=auth, json={
         "soort": "RSO", "naam": "RSO Test", "email": "info@rsotest.nl",
@@ -91,7 +96,7 @@ def test_teamleden_en_accounthouder(client, auth):
     }).json()
     assert org["email"] == "info@rsotest.nl"
     assert org["linkedin"].endswith("rsotest")
-    assert org["accounthouder"] and org["accounthouder"]["email"] == "admin@rhadix.nl"
+    assert org["accounthouder"] and org["accounthouder"]["email"] == SSO_ADMIN_EMAIL
     # accounthouder leeghalen mag ook
     upd = client.patch(f"/api/crm/organisaties/{org['id']}", headers=auth, json={
         "soort": "RSO", "naam": "RSO Test", "accounthouder_id": None,
