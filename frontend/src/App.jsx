@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { getMe, getAuthToken, clearAuthToken } from './services/api'
 import { currentBrand } from './brand'
-import { Nav, platformUrl } from './components/UI'
+import { Nav, platformUrl, centraleLogoutUrl } from './components/UI'
 import LoginScreen from './pages/LoginScreen'
 import Dashboard from './pages/Dashboard'
 import Relaties from './pages/Relaties'
@@ -68,7 +68,14 @@ export default function App() {
     sessionStorage.setItem('rhadix_brand', next)
     setBrandV(next)
   }
-  function logout() { clearAuthToken(); setAuthUser(null); setGeenToegang(null) }
+  // Uitloggen loopt via de centrale uitgang op het Platform: die trekt het
+  // SSO-cookie in en zet de gebruiker daarna op het Platform. Alleen de lokale
+  // state wissen laat het cookie staan, waarna de eerstvolgende paginalading
+  // opnieuw inlogt.
+  function logout() {
+    clearAuthToken(); setAuthUser(null); setGeenToegang(null)
+    window.location.replace(centraleLogoutUrl())
+  }
 
   if (loading) return null
   if (!authUser) return <LoginScreen onLogin={setAuthUser} onBrandToggle={IS_STAGING ? toggleBrand : null} brandV={brandV} />
