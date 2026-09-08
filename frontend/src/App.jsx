@@ -13,9 +13,25 @@ import Taken from './pages/Taken'
 
 const IS_STAGING = (import.meta.env.VITE_RHADIX_ENV || '').toLowerCase() === 'staging'
 
+function GeenAppToegang({ melding, onLogout }) {
+  return (
+    <div style={{ padding: 48, display: 'flex', justifyContent: 'center' }}>
+      <div style={{
+        maxWidth: 560, borderLeft: '4px solid #c0392b', background: 'var(--card, #fff)',
+        borderRadius: 8, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+      }}>
+        <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Geen toegang tot Rhadix CRM</h2>
+        <p style={{ margin: '0 0 16px', lineHeight: 1.5 }}>{melding}</p>
+        <button onClick={onLogout}>Uitloggen</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [authUser, setAuthUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [geenToegang, setGeenToegang] = useState(null)
   const [tab, setTab] = useState('dashboard')
   const histRef = useRef([])
   function goTab(t) { if (t !== tab) { histRef.current.push(tab); setTab(t) } }
@@ -26,6 +42,12 @@ export default function App() {
     const onUnauth = () => setAuthUser(null)
     window.addEventListener('rhadix:unauthorized', onUnauth)
     return () => window.removeEventListener('rhadix:unauthorized', onUnauth)
+  }, [])
+
+  useEffect(() => {
+    const onGeenToegang = (e) => setGeenToegang(e.detail)
+    window.addEventListener('rhadix:geen-app-toegang', onGeenToegang)
+    return () => window.removeEventListener('rhadix:geen-app-toegang', onGeenToegang)
   }, [])
 
   useEffect(() => {
@@ -40,10 +62,11 @@ export default function App() {
     sessionStorage.setItem('rhadix_brand', next)
     setBrandV(next)
   }
-  function logout() { clearAuthToken(); setAuthUser(null) }
+  function logout() { clearAuthToken(); setAuthUser(null); setGeenToegang(null) }
 
   if (loading) return null
   if (!authUser) return <LoginScreen onLogin={setAuthUser} onBrandToggle={IS_STAGING ? toggleBrand : null} brandV={brandV} />
+  if (geenToegang) return <GeenAppToegang melding={geenToegang} onLogout={logout} />
 
   const isAdmin = authUser.role === 'PLATFORM_ADMIN' || authUser.role === 'ORG_ADMIN'
   const tabs = [
