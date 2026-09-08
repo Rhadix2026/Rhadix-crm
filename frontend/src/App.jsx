@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { getMe, getAuthToken, clearAuthToken } from './services/api'
 import { currentBrand } from './brand'
-import { Nav } from './components/UI'
+import { Nav, platformUrl } from './components/UI'
 import LoginScreen from './pages/LoginScreen'
 import Dashboard from './pages/Dashboard'
 import Relaties from './pages/Relaties'
@@ -22,7 +22,13 @@ function GeenAppToegang({ melding, onLogout }) {
       }}>
         <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Geen toegang tot Rhadix CRM</h2>
         <p style={{ margin: '0 0 16px', lineHeight: 1.5 }}>{melding}</p>
-        <button onClick={onLogout}>Uitloggen</button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => { window.location.href = platformUrl() }}
+                  title="Terug naar het Platform — kies een applicatie">
+            ▦ Terug naar Platform
+          </button>
+          <button onClick={onLogout}>Uitloggen</button>
+        </div>
       </div>
     </div>
   )
