@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { listOrgUsers, toggleUser, platformStats } from '../services/api'
-import { PageHead, Toast, platformUrl } from '../components/UI'
+import { listOrgUsers, platformStats } from '../services/api'
+import { PageHead, platformUrl } from '../components/UI'
 
 const ROL = { PLATFORM_ADMIN:'b-navy', ORG_ADMIN:'b-blue', ORG_USER:'b-grey' }
 
 export default function Beheer({ authUser }) {
   const [users, setUsers] = useState([])
   const [stats, setStats] = useState(null)
-  const [toast, setToast] = useState('')
   const isPlatform = authUser.role === 'PLATFORM_ADMIN'
 
   function load() {
@@ -15,12 +14,7 @@ export default function Beheer({ authUser }) {
     if (isPlatform) platformStats().then(setStats).catch(() => {})
   }
   useEffect(() => { load() }, [])
-  function flash(m) { setToast(m); setTimeout(() => setToast(''), 2200) }
 
-  async function toggle(u) {
-    try { await toggleUser(u.id); load(); flash(u.is_active ? 'Gedeactiveerd' : 'Geactiveerd') }
-    catch (e) { alert(e.message) }
-  }
 
   return (
     <div>
@@ -38,7 +32,7 @@ export default function Beheer({ authUser }) {
 
       <div className="card" style={{ overflow:'hidden' }}>
         <table className="tbl">
-          <thead><tr><th>Naam</th><th>E-mail</th><th>Rol</th><th>Status</th><th>Laatste login</th><th></th></tr></thead>
+          <thead><tr><th>Naam</th><th>E-mail</th><th>Rol</th><th>Status</th><th>Laatste login</th></tr></thead>
           <tbody>
             {users.map(u => (
               <tr key={u.id}>
@@ -47,9 +41,7 @@ export default function Beheer({ authUser }) {
                 <td><span className={`badge ${ROL[u.role] || 'b-grey'}`}>{u.role}</span></td>
                 <td>{u.is_active ? <span className="badge b-green">Actief</span> : <span className="badge b-red">Inactief</span>}</td>
                 <td className="small muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('nl-NL') : '—'}</td>
-                <td className="row" style={{ gap:6 }}>
-                  <button className="btn-ghost small" onClick={() => toggle(u)}>{u.is_active ? 'Deactiveer' : 'Activeer'}</button>
-                </td>
+
               </tr>
             ))}
           </tbody>
@@ -63,7 +55,6 @@ export default function Beheer({ authUser }) {
           verschijnt hier vanzelf na zijn eerste login.</p>
       </div>
 
-      <Toast msg={toast} />
     </div>
   )
 }
