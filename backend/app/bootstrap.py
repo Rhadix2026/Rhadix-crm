@@ -46,7 +46,14 @@ def _ensure_columns() -> None:
                                 ("accounthouder_id", uuid_ddl),
                                 ("plaats", "VARCHAR(128)"), ("kvk", "VARCHAR(16)")],
         "crm_contactpersonen": [("linkedin", "VARCHAR(512)"),
-                                ("accounthouder_id", uuid_ddl)],
+                                ("accounthouder_id", uuid_ddl),
+                                # Classificatie: status en de eerste bronpagina.
+                                ("status", "VARCHAR(32)"),
+                                ("bronpagina", "VARCHAR(255)")],
+        "crm_activiteiten":    [("kanaal", "VARCHAR(64)"),
+                                ("interesse", "VARCHAR(255)"),
+                                ("bronpagina", "VARCHAR(255)"),
+                                ("campagne", "VARCHAR(255)")],
         "crm_stakeholders":    [("email", "VARCHAR(255)"), ("linkedin", "VARCHAR(512)")],
     }
     insp = inspect(engine)
@@ -61,6 +68,20 @@ def _ensure_columns() -> None:
                         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
                     except Exception:
                         pass
+
+        # create_all legt indexen aan bij het maken van een tabel, maar niet bij
+        # een kolom die er later met ALTER TABLE bij komt. Deze twee worden
+        # gefilterd ("toon alle leads", "alles via dit kanaal") en verdienen er
+        # een. IF NOT EXISTS maakt het herhaalbaar.
+        for tabel, kolom in [("crm_contactpersonen", "status"),
+                             ("crm_activiteiten", "kanaal")]:
+            if not insp.has_table(tabel):
+                continue
+            try:
+                conn.execute(text(
+                    f"CREATE INDEX IF NOT EXISTS ix_{tabel}_{kolom} ON {tabel} ({kolom})"))
+            except Exception:
+                pass
 
 
 def _ensure_platform_tenant() -> uuid.UUID:

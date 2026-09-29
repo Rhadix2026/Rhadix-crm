@@ -2,10 +2,27 @@ import React, { useEffect, useState } from 'react'
 import { listCps, createCp, updateCp, deleteCp, listOrgs, getTeamleden } from '../services/api'
 import { PageHead, Modal, Field, Toast, TeamMultiSelect } from '../components/UI'
 
-const LEEG = { categorie:'', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
+const LEEG = { categorie:'', status:'', bronpagina:'', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
   naam:'', functie:'', email:'', telefoon:'', zekerheid:'', bron_url:'', bron_type:'', opmerking:'',
   accounthouder_id:'', extra_accounthouder_ids:[] }
 const ZCLS = { hoog:'b-green', middel:'b-amber', laag:'b-red' }
+
+// Gelijk aan RELATIETYPEN / STATUSSEN / HERKOMSTEN in crm_models.py. Waarden
+// buiten deze lijsten blijven geldig: bestaande contacten staan op varianten die
+// we niet weggooien. Ze verschijnen alleen niet in de keuzelijst, en wie zo'n
+// contact opslaat zonder het veld aan te raken verandert er niets aan.
+const RELATIETYPEN = ['Zorgorganisatie','VVT','Ziekenhuis','GGZ','Gehandicaptenzorg',
+  'Huisartsenzorg','RSO','Overheid','Leverancier','Adviesbureau','Kennispartner','Overig']
+const STATUSSEN = ['Nieuw','Lead','Gekwalificeerd','In gesprek','Klant','Afgesloten']
+const HERKOMSTEN = ['Website','LinkedIn','Handmatig','Event/netwerk','Onderzoek','Verwijzing']
+const SCLS = { Nieuw:'b-grey', Lead:'b-blue', Gekwalificeerd:'b-amber',
+  'In gesprek':'b-amber', Klant:'b-green', Afgesloten:'b-grey' }
+
+// Een waarde die niet in de lijst staat mag niet stilzwijgend verdwijnen uit de
+// keuzelijst; dan zou opslaan hem wissen. Daarom hoort hij er tijdelijk bij.
+function metHuidige(lijst, waarde) {
+  return waarde && !lijst.includes(waarde) ? [waarde, ...lijst] : lijst
+}
 // De categoriekeuze begint met een lege optie. Zonder die optie valt een
 // contact zonder categorie terug op de eerste keuze in de lijst -- dat was RSO
 // -- en dan staat er in het scherm een indeling die nergens is vastgelegd.
@@ -42,12 +59,13 @@ export default function Contactpersonen() {
       </div>
       <div className="card" style={{ overflow:'hidden' }}>
         <table className="tbl">
-          <thead><tr><th>Naam</th><th>Organisatie</th><th>Rolniveau</th><th>Contact</th><th>Zekerheid</th><th></th></tr></thead>
+          <thead><tr><th>Naam</th><th>Organisatie</th><th>Status</th><th>Rolniveau</th><th>Contact</th><th>Zekerheid</th><th></th></tr></thead>
           <tbody>
             {rows.map(c => (
               <tr key={c.id}>
                 <td><b>{c.naam || '—'}</b>{c.functie && <div className="small muted">{c.functie}</div>}</td>
                 <td className="small">{c.organisatie_naam}{c.rso_regio && <div className="muted">{c.rso_regio}</div>}</td>
+                <td>{c.status && <span className={`badge ${SCLS[c.status] || 'b-grey'}`}>{c.status}</span>}</td>
                 <td className="small">{c.rolniveau || '—'}</td>
                 <td className="small">{c.email || c.telefoon || '—'}</td>
                 <td>{c.zekerheid && <span className={`badge ${ZCLS[c.zekerheid.toLowerCase()] || 'b-grey'}`}>{c.zekerheid}</span>}</td>
@@ -76,8 +94,12 @@ function CpForm({ data, orgs, team = [], onClose, onSave }) {
       <div className="grid" style={{ gridTemplateColumns:'1fr 1fr' }}>
         <Field label="Naam"><input className="input" value={f.naam || ''} onChange={e => set('naam', e.target.value)} /></Field>
         <Field label="Functie / rol"><input className="input" value={f.functie || ''} onChange={e => set('functie', e.target.value)} /></Field>
-        <Field label="Categorie"><select className="select" value={f.categorie || ''} onChange={e => set('categorie', e.target.value)}>
-          <option value="">—</option><option>Lead</option><option>RSO</option><option>VVT</option><option>Leverancier</option></select></Field>
+        <Field label="Relatietype"><select className="select" value={f.categorie || ''} onChange={e => set('categorie', e.target.value)}>
+          <option value="">—</option>
+          {metHuidige(RELATIETYPEN, f.categorie).map(o => <option key={o}>{o}</option>)}</select></Field>
+        <Field label="Status"><select className="select" value={f.status || ''} onChange={e => set('status', e.target.value)}>
+          <option value="">—</option>
+          {metHuidige(STATUSSEN, f.status).map(o => <option key={o}>{o}</option>)}</select></Field>
         <Field label="Gekoppelde organisatie"><select className="select" value={f.organisatie_id || ''} onChange={e => set('organisatie_id', e.target.value)}>
           <option value="">— vrije tekst —</option>{orgs.map(o => <option key={o.id} value={o.id}>{o.naam}</option>)}</select></Field>
         <Field label="Organisatie (tekst)"><input className="input" value={f.organisatie_naam || ''} onChange={e => set('organisatie_naam', e.target.value)} /></Field>
@@ -88,6 +110,10 @@ function CpForm({ data, orgs, team = [], onClose, onSave }) {
         <Field label="E-mail"><input className="input" value={f.email || ''} onChange={e => set('email', e.target.value)} /></Field>
         <Field label="LinkedIn"><input className="input" value={f.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
         <Field label="Telefoon"><input className="input" value={f.telefoon || ''} onChange={e => set('telefoon', e.target.value)} /></Field>
+        <Field label="Herkomst"><select className="select" value={f.bron_type || ''} onChange={e => set('bron_type', e.target.value)}>
+          <option value="">—</option>
+          {metHuidige(HERKOMSTEN, f.bron_type).map(o => <option key={o}>{o}</option>)}</select></Field>
+        <Field label="Bronpagina (eerste aanraking)"><input className="input" value={f.bronpagina || ''} onChange={e => set('bronpagina', e.target.value)} placeholder="rhadix, data-readiness…" /></Field>
         <Field label="Accounthouder (Rhadix)"><select className="select" value={f.accounthouder_id || ''} onChange={e => set('accounthouder_id', e.target.value)}>
           <option value="">— Geen —</option>{team.map(t => <option key={t.id} value={t.id}>{t.naam}</option>)}</select></Field>
       </div>

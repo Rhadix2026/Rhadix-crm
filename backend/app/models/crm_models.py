@@ -34,6 +34,41 @@ SOORT_OVERIG = "OVERIG"  # Revalidatie/overig niet-VVT
 NIVEAUS   = ("Hoog", "Middel", "Laag")
 HOUDINGEN = ("Positief", "Neutraal", "Onbekend", "Negatief")
 
+# ── Classificatie van relaties en contactmomenten ─────────────────────────────
+# Vier assen, bewust uit elkaar gehaald. Relatietype, status en herkomst zeggen
+# iets over een persoon en horen op het contact; kanaal en interesse zeggen iets
+# over een moment en horen op de activiteit. Eén contact kan meerdere momenten
+# hebben, elk met een eigen kanaal en eigen interesse.
+#
+# Gewone strings, geen ENUM: een waarde erbij is dan een codewijziging en geen
+# databasemigratie. Waarden buiten deze lijsten blijven geldig — de bestaande
+# gegevens bevatten varianten die we niet weggooien.
+
+# Wat iemand is. Het generieke type staat naast de specifieke, niet ervoor in de
+# plaats: wie de sector kent kiest de sector, wie hem niet kent kiest generiek.
+RELATIETYPEN = (
+    "Zorgorganisatie",
+    "VVT", "Ziekenhuis", "GGZ", "Gehandicaptenzorg", "Huisartsenzorg",
+    "RSO", "Overheid", "Leverancier", "Adviesbureau", "Kennispartner", "Overig",
+)
+
+# Waar iemand in het proces staat. Het enige veld waarvan je de huidige waarde
+# wilt filteren, en daarom een kolom en geen activiteit.
+STATUSSEN = ("Nieuw", "Lead", "Gekwalificeerd", "In gesprek", "Klant", "Afgesloten")
+
+# Hoe iemand binnenkwam.
+HERKOMSTEN = ("Website", "LinkedIn", "Handmatig", "Event/netwerk",
+              "Onderzoek", "Verwijzing")
+
+# Via welke oproep dit moment ontstond.
+KANALEN = ("Contactformulier", "Kennismaking", "Data Readiness Check",
+           "Pilotaanvraag", "Ontwikkelpartner", "Nieuwsbrief", "Overig")
+
+# Waarin iemand geïnteresseerd is. Meerdere toegestaan, komma-gescheiden.
+INTERESSES = ("Datagereedheidsscan", "Implementatiegereedheid",
+              "Dataregie en realisatie", "AI-gereedheid",
+              "Rhadix", "Readiness Check", "Algemeen")
+
 
 # ── Koppeltabellen: extra Rhadix-accounthouders (many-to-many) ──────────────────
 # Naast de primaire `accounthouder_id` kunnen meerdere collega's gekoppeld worden.
@@ -116,6 +151,11 @@ class Contactpersoon(Base):
     bron_url       = Column(String(1024), nullable=True)
     bron_type      = Column(String(128), nullable=True)
     zekerheid      = Column(String(32), nullable=True)    # Hoog/Middel/Laag
+    # Waar deze persoon in het proces staat; zie STATUSSEN.
+    status         = Column(String(32), nullable=True, index=True)
+    # De pagina van de eerste aanraking. Wordt niet overschreven: latere
+    # pagina's komen op de activiteit terecht.
+    bronpagina     = Column(String(255), nullable=True)
     opmerking      = Column(Text, nullable=True)
 
     # Rhadix-accounthouder(s): primair + extra teamleden
@@ -210,6 +250,12 @@ class Activiteit(Base):
     soort        = Column(String(32), nullable=False, default="taak")  # taak/afspraak/notitie
     omschrijving = Column(Text, nullable=True)
     status       = Column(String(16), nullable=False, default="open", index=True)  # open/afgerond
+    # Wat er op dit moment precies gebeurde. Op de activiteit en niet op het
+    # contact, zodat een tweede aanvraag de eerste niet wist.
+    kanaal       = Column(String(64), nullable=True, index=True)
+    interesse    = Column(String(255), nullable=True)   # komma-gescheiden
+    bronpagina   = Column(String(255), nullable=True)
+    campagne     = Column(String(255), nullable=True)   # bron/medium/campagne
     datum        = Column(Date, nullable=True)
     eigenaar     = Column(String(255), nullable=True)
 

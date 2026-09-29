@@ -44,7 +44,13 @@ export default function Opvolging() {
               <tr key={a.id}>
                 <td><input type="checkbox" checked={a.status === 'afgerond'} onChange={() => toggle(a)} /></td>
                 <td style={{ textDecoration: a.status === 'afgerond' ? 'line-through' : 'none' }}>
-                  <b>{a.titel}</b>{a.omschrijving && <div className="small muted">{a.omschrijving}</div>}</td>
+                  <b>{a.titel}</b>
+                  {(a.kanaal || a.interesse || a.bronpagina || a.campagne) && (
+                    <div className="small muted">
+                      {[a.kanaal, a.interesse, a.bronpagina && `via ${a.bronpagina}`, a.campagne]
+                        .filter(Boolean).join(' · ')}
+                    </div>)}
+                  {a.omschrijving && <div className="small muted">{a.omschrijving}</div>}</td>
                 <td><span className={`badge ${SOORT[a.soort] || 'b-grey'}`}>{a.soort}</span></td>
                 <td className="small muted">{orgName(a.organisatie_id) || '—'}</td>
                 <td className="small">{a.datum || '—'}</td>
