@@ -88,6 +88,7 @@ def _cp(c: Contactpersoon) -> dict:
         "linkedin": c.linkedin,
         "telefoon": c.telefoon, "bron_url": c.bron_url, "bron_type": c.bron_type,
         "zekerheid": c.zekerheid, "opmerking": c.opmerking,
+        "status": c.status, "bronpagina": c.bronpagina,
         "accounthouder_id": str(c.accounthouder_id) if c.accounthouder_id else None,
         "accounthouder": (_user_mini(c.accounthouder) if c.accounthouder else None),
         "extra_accounthouders": [_user_mini(u) for u in c.extra_accounthouders],
@@ -131,6 +132,8 @@ def _act(a: Activiteit) -> dict:
         "krachtenveld_id": str(a.krachtenveld_id) if a.krachtenveld_id else None,
         "titel": a.titel, "soort": a.soort, "omschrijving": a.omschrijving,
         "status": a.status, "datum": a.datum.isoformat() if a.datum else None, "eigenaar": a.eigenaar,
+        "kanaal": a.kanaal, "interesse": a.interesse,
+        "bronpagina": a.bronpagina, "campagne": a.campagne,
     }
 
 
@@ -246,6 +249,8 @@ class CpBody(BaseModel):
     bron_type: Optional[str] = None
     zekerheid: Optional[str] = None
     opmerking: Optional[str] = None
+    status: Optional[str] = None
+    bronpagina: Optional[str] = None
     accounthouder_id: Optional[str] = None
     extra_accounthouder_ids: Optional[List[str]] = None
 
@@ -438,6 +443,10 @@ class ActBody(BaseModel):
     status: str = "open"
     datum: Optional[date] = None
     eigenaar: Optional[str] = None
+    kanaal: Optional[str] = None
+    interesse: Optional[str] = None
+    bronpagina: Optional[str] = None
+    campagne: Optional[str] = None
 
 
 @router.get("/activiteiten")
