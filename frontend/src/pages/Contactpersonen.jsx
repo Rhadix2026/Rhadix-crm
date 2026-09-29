@@ -2,10 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { listCps, createCp, updateCp, deleteCp, listOrgs, getTeamleden } from '../services/api'
 import { PageHead, Modal, Field, Toast, TeamMultiSelect } from '../components/UI'
 
-const LEEG = { categorie:'RSO', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
+const LEEG = { categorie:'', organisatie_naam:'', organisatie_id:'', rso_regio:'', rolniveau:'', linkedin:'',
   naam:'', functie:'', email:'', telefoon:'', zekerheid:'', bron_url:'', bron_type:'', opmerking:'',
   accounthouder_id:'', extra_accounthouder_ids:[] }
 const ZCLS = { hoog:'b-green', middel:'b-amber', laag:'b-red' }
+// De categoriekeuze begint met een lege optie. Zonder die optie valt een
+// contact zonder categorie terug op de eerste keuze in de lijst -- dat was RSO
+// -- en dan staat er in het scherm een indeling die nergens is vastgelegd.
+// 'Lead' is de categorie voor wie zich via de website aanmeldt.
 
 export default function Contactpersonen() {
   const [rows, setRows] = useState([])
@@ -73,7 +77,7 @@ function CpForm({ data, orgs, team = [], onClose, onSave }) {
         <Field label="Naam"><input className="input" value={f.naam || ''} onChange={e => set('naam', e.target.value)} /></Field>
         <Field label="Functie / rol"><input className="input" value={f.functie || ''} onChange={e => set('functie', e.target.value)} /></Field>
         <Field label="Categorie"><select className="select" value={f.categorie || ''} onChange={e => set('categorie', e.target.value)}>
-          <option>RSO</option><option>VVT</option><option>Leverancier</option></select></Field>
+          <option value="">—</option><option>Lead</option><option>RSO</option><option>VVT</option><option>Leverancier</option></select></Field>
         <Field label="Gekoppelde organisatie"><select className="select" value={f.organisatie_id || ''} onChange={e => set('organisatie_id', e.target.value)}>
           <option value="">— vrije tekst —</option>{orgs.map(o => <option key={o.id} value={o.id}>{o.naam}</option>)}</select></Field>
         <Field label="Organisatie (tekst)"><input className="input" value={f.organisatie_naam || ''} onChange={e => set('organisatie_naam', e.target.value)} /></Field>
