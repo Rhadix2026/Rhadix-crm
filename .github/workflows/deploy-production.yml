@@ -123,8 +123,10 @@ jobs:
             echo "CENTRAL_JWT_PUBLIC_KEY=${{ secrets.PROD_CENTRAL_JWT_PUBLIC_KEY }}" >> /opt/crm-app/.env.production
             chmod 600 /opt/crm-app/.env.production
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            $COMPOSE pull || { echo "pull mislukt"; exit 1; }
-            $COMPOSE up -d --remove-orphans
+            # B-33: db wordt nooit opnieuw aangemaakt; alleen de applicatie.
+            $COMPOSE up -d --no-recreate db || { echo "infra-controle mislukt — applicatie onaangeroerd"; exit 1; }
+            $COMPOSE pull backend frontend || { echo "pull mislukt"; exit 1; }
+            $COMPOSE up -d --no-deps --remove-orphans backend frontend
             OK=false
             for i in $(seq 1 18); do
               S=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8018/api/health 2>/dev/null || echo 000)
@@ -136,7 +138,7 @@ jobs:
             docker logs crm-backend --tail 50 || true
             if [ -n "$PREV" ] && [ "$PREV" != "$VERSION" ] && [ "$PREV" != "latest" ]; then
               sed -i "s/CRM_VERSION=.*/CRM_VERSION=$PREV/" /opt/crm-app/.env.production
-              $COMPOSE up -d --remove-orphans; sleep 15
+              $COMPOSE up -d --no-deps --remove-orphans backend frontend; sleep 15
               RB=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8018/api/health 2>/dev/null || echo 000)
               [ "$RB" = "200" ] && echo "✓ rollback naar $PREV" || echo "✗ rollback mislukt"
             fi
